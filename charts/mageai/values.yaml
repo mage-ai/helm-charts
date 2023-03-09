@@ -12,7 +12,7 @@ image:
 
 imagePullSecrets: []
 nameOverride: "mageai"
-fullnameOverride: "mageai-chart"
+fullnameOverride: "mageai"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -80,3 +80,8 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+volumes:
+  - name: mage-fs
+    hostPath:
+      path: /path/to/mage_project
