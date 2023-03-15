@@ -5,9 +5,7 @@ metadata:
   labels:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
@@ -48,10 +46,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
-            - name: KUBE_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
+            {{- toYaml .Values.env | nindent 12 }}
           volumeMounts:
             - name: mage-fs
               mountPath: /home/src

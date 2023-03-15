@@ -68,13 +68,6 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
 nodeSelector: {}
 
 tolerations: []
@@ -85,3 +78,9 @@ volumes:
   - name: mage-fs
     hostPath:
       path: /path/to/mage_project
+
+env:
+  - name: KUBE_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
