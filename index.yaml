@@ -3,6 +3,16 @@ entries:
   mageai:
   - apiVersion: v2
     appVersion: 0.8.24
+    created: "2023-04-24T23:24:06.725563822Z"
+    description: A Helm chart for Mage AI
+    digest: ff5a73bf8311d783e64f78250da2e742e3ceed10fa3a3ee0e48e20c17ebc9aba
+    name: mageai
+    type: application
+    urls:
+    - https://github.com/mage-ai/helm-charts/releases/download/mageai-0.1.2/mageai-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 0.8.24
     created: "2023-03-15T09:40:54.028701265Z"
     description: A Helm chart for Mage AI
     digest: c00a1fbe77b495ae00d6ed087980573fc93d7179791ed2aa9ccde8ffafcf8494
@@ -21,4 +31,4 @@ entries:
     urls:
     - https://github.com/mage-ai/helm-charts/releases/download/mageai-0.1.0/mageai-0.1.0.tgz
     version: 0.1.0
-generated: "2023-03-15T09:40:54.028725965Z"
+generated: "2023-04-24T23:24:06.725583022Z"
