@@ -1,0 +1,6 @@
+name: chart-testing
+description: Run chart-testing against all charts
+
+runs:
+  using: docker
+  image: Dockerfile

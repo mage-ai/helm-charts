@@ -1,0 +1,12 @@
+name: kubeconform
+description: Run kubeconform against the chart
+inputs:
+  chart-path:
+    description: Path to the chart source
+    required: true
+
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    CHART_PATH: ${{ inputs.chart-path }}
