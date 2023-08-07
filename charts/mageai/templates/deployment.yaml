@@ -48,8 +48,9 @@ spec:
           env:
             {{- toYaml .Values.env | nindent 12 }}
           volumeMounts:
-            - name: mage-fs
-              mountPath: /home/src
+          {{- if .Values.extraVolumeMounts -}}
+            {{ toYaml .Values.extraVolumeMounts | nindent 12 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -62,7 +63,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.volumes }}
       volumes:
-        {{- toYaml . | nindent 8 }}
+      {{- if .Values.extraVolumes -}}
+        {{ toYaml .Values.extraVolumes | nindent 8 }}
       {{- end }}
