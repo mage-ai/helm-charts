@@ -1,0 +1,74 @@
+name: Test Charts
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+# will cancel previous workflows triggered by the same event and for the same ref for PRs or same SHA otherwise
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ contains(github.event_name, 'pull_request') && github.event.pull_request.head.ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  changed-charts:
+    runs-on: ubuntu-latest
+    name: List changed charts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v35.5.4
+        with:
+          dir_names: true
+          dir_names_exclude_root: true
+          dir_names_max_depth: 2
+          json: true
+
+      - name: Prepare charts matrix
+        id: charts-matrix
+        run: |
+          echo charts=$(echo ${{ steps.changed-files.outputs.all_changed_files }} | jq -r '[.[] | select(test("^charts", "ix"))]') >> $GITHUB_OUTPUT
+    outputs:
+      charts: ${{ steps.charts-matrix.outputs.charts }}
+
+  chart-testing:
+    runs-on: ubuntu-latest
+    name: Run chart-testing
+    # Skip job if there are no charts to test
+    # https://github.com/dorny/paths-filter/issues/66
+    if: ${{ needs.changed-charts.outputs.charts != '' && toJson(fromJson(needs.changed-charts.outputs.charts)) != '[]' }}
+    needs:
+      - changed-charts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # https://github.com/helm/chart-testing/issues/186#issuecomment-602052815
+          fetch-depth: 0
+
+      - name: Run chart-testing
+        uses: ./.github/actions/chart-testing
+
+  kubeconform:
+    runs-on: ubuntu-latest
+    name: Run kubeconform
+    # Skip job if there are no charts to test
+    # https://github.com/dorny/paths-filter/issues/66
+    if: ${{ needs.changed-charts.outputs.charts != '' && toJson(fromJson(needs.changed-charts.outputs.charts)) != '[]' }}
+    needs:
+      - changed-charts
+    strategy:
+      matrix:
+        chart: ${{ fromJSON(needs.changed-charts.outputs.charts) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run kubeconform
+        uses: ./.github/actions/kubeconform
+        with:
+          chart-path: ${{ matrix.chart }}
