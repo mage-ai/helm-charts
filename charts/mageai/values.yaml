@@ -42,6 +42,14 @@ service:
   # Annotations to add to the service
   annotations: {}
 
+livenessProbe:
+  initialDelaySeconds: 5
+  timeoutSeconds: 10
+
+readinessProbe:
+  initialDelaySeconds: 5
+  timeoutSeconds: 1
+
 ingress:
   enabled: false
   className: ""
