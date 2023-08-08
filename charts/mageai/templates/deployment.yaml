@@ -45,8 +45,17 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ template "mageai.fullname" . }}-env
+            - secretRef:
+                name: {{ template "mageai.secretName" . }}
           env:
+          {{- if .Values.extraEnvs -}}
+            {{- toYaml .Values.extraEnvs | nindent 12 }}
+          {{- else if .Values.env }}
             {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
           volumeMounts:
           {{- if .Values.extraVolumeMounts -}}
             {{ toYaml .Values.extraVolumeMounts | nindent 12 }}

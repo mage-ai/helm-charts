@@ -85,7 +85,18 @@ extraVolumes:
     hostPath:
       path: /path/to/mage_project
 
-env:
+# config: Default configuration for mageai as environment variables. These get injected directly in the container.
+config: {}
+
+# existingSecret: Spcifies an existing secret to be used as environment variables. These get injected directly in the container.
+existingSecret: ""
+
+# secrets: Default secrets for mageai as environment variables. These get injected directly in the container.
+# Consider using a secret manager first, before sourcing secrets as environment variables.
+secrets: {}
+
+# extraEnvs: Extra environment variables
+extraEnvs:
   - name: KUBE_NAMESPACE
     valueFrom:
       fieldRef:
