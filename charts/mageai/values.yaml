@@ -76,7 +76,11 @@ tolerations: []
 
 affinity: {}
 
-volumes:
+extraVolumeMounts:
+  - name: mage-fs
+    mountPath: /home/src
+
+extraVolumes:
   - name: mage-fs
     hostPath:
       path: /path/to/mage_project
