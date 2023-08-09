@@ -46,8 +46,10 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           envFrom:
+            {{- if .Values.config }}
             - configMapRef:
-                name: {{ template "mageai.fullname" . }}-env
+                name: {{ include "mageai.fullname" . }}-env
+            {{- end }}
             - secretRef:
                 name: {{ template "mageai.secretName" . }}
           env:
