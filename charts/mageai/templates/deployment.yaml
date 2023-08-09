@@ -50,8 +50,10 @@ spec:
             - configMapRef:
                 name: {{ include "mageai.fullname" . }}-env
             {{- end }}
+            {{- if or (.Values.existingSecret) (.Values.secrets) }}
             - secretRef:
-                name: {{ template "mageai.secretName" . }}
+                name: {{ include "mageai.secretName" . }}
+            {{- end }}
           env:
           {{- if .Values.extraEnvs -}}
             {{- toYaml .Values.extraEnvs | nindent 12 }}
