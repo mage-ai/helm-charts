@@ -65,5 +65,5 @@ Create the name of the service account to use
 Generate chart secret name
 */}}
 {{- define "mageai.secretName" -}}
-{{ default (printf "%s-secert-env" (include "mageai.fullname" .)) .Values.existingSecret }}
+{{ default (printf "%s-secret-env" (include "mageai.fullname" .)) .Values.existingSecret }}
 {{- end -}}
