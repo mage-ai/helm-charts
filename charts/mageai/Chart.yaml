@@ -14,7 +14,8 @@ icon: https://avatars.githubusercontent.com/u/69371472
 
 maintainers:
   - name: mage-ai
-    url: https://github.com/mage-ai/helm-charts
+    url: https://www.mage.ai
+    email: eng@mage.ai
 
 name: mageai
 
