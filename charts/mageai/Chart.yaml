@@ -1,6 +1,25 @@
 apiVersion: v2
-name: mageai
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "0.9.11"
+
 description: A Helm chart for Mage AI
+
+home: https://www.mage.ai
+
+icon: https://avatars.githubusercontent.com/u/69371472
+
+maintainers:
+  - name: mage-ai
+    url: https://github.com/mage-ai/helm-charts
+
+name: mageai
+
+sources:
+- https://github.com/mage-ai/helm-charts/tree/master/charts/mageai
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -16,9 +35,3 @@ type: application
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
 version: 0.1.3
-
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-# It is recommended to use it with quotes.
-appVersion: "0.9.11"
