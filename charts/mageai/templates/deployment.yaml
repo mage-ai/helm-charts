@@ -35,29 +35,33 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          {{ if .Values.livenessProbe.enabled | default true -}}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- toYaml .Values.customLivenessProbe | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.path | default "/api/status" }}
-              port: {{ .Values.livenessProbe.port | default "http" }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds | default 5 }}
+              path: {{ .Values.livenessProbe.path }}
+              port: {{ .Values.livenessProbe.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             successThreshold: {{ .Values.livenessProbe.successThreshold }}
             terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds | default 1 }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           {{- end }}
-          {{ if .Values.readinessProbe.enabled | default true -}}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- toYaml .Values.customReadinessProbe | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.readinessProbe.path | default "/api/status" }}
-              port: {{ .Values.readinessProbe.port | default "http" }}
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds | default 5 }}
+              path: {{ .Values.readinessProbe.path }}
+              port: {{ .Values.readinessProbe.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             successThreshold: {{ .Values.readinessProbe.successThreshold }}
             terminationGracePeriodSeconds: {{ .Values.readinessProbe.terminationGracePeriodSeconds }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
