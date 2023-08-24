@@ -42,6 +42,38 @@ service:
   # Annotations to add to the service
   annotations: {}
 
+# Configure extra options for containers' liveness probes
+# If not configured, the probe is enabled using the following values
+livenessProbe:
+  enabled: true
+  path: /api/status
+  port: http
+  initialDelaySeconds: 5
+  # failureThreshold:
+  # periodSeconds:
+  # successThreshold:
+  # terminationGracePeriodSeconds:
+  timeoutSeconds: 10
+
+# Configure extra options for containers' readiness probes
+# If not configured, the probe is enabled using the following values
+readinessProbe:
+  enabled: true
+  path: /api/status
+  port: http
+  initialDelaySeconds: 5
+  # failureThreshold:
+  # periodSeconds:
+  # successThreshold:
+  # terminationGracePeriodSeconds:
+  timeoutSeconds: 1
+
+# Custom liveness probe
+customLivenessProbe: {}
+
+# Custom rediness probe
+customReadinessProbe: {}
+
 ingress:
   enabled: false
   className: ""
