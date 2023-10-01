@@ -6,14 +6,14 @@ replicaCount: 2
 seperateScheduler: true
 
 scheduler:
-  replicaCount: 1 #Effective if seperateScheduler is true
+  replicaCount: 2 #Effective if seperateScheduler is true
   name: mageai-scheduler
 webServer:
   replicaCount: 1 #Effective if seperateScheduler is true
   name: mageai-webserver
 
 redis:
-  enabled: false #Enable redis if you want more replica
+  enabled: true #Enable redis if you want more replica
   architecture: standalone
   auth:
     enabled: false

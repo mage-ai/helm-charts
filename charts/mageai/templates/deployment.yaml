@@ -32,7 +32,7 @@ spec:
           env:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
-              value: redis://mage-chart-redis-headless:6379/0
+              value: redis://{{.Release.Name}}-redis-headless:6379/0
           {{- else if .Values.redis.url }}
             - name: REDIS_URL
               value: {{ .Values.redis.url }}
@@ -95,7 +95,7 @@ spec:
           {{- end }}
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
-              value: redis://mage-chart-redis-headless:6379/0
+              value: redis://{{.Release.Name}}-redis-headless:6379/0
           {{- else if .Values.redis.url}}
             - name: REDIS_URL
               value: {{.Values.redis.url}}
