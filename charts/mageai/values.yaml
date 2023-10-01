@@ -2,7 +2,20 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
+replicaCount: 2
+seperateScheduler: false
+
+scheduler:
+  replicaCount: 1 #Effective if seperateScheduler is true
+webService:
+  replicaCount: 1 #Effective if seperateScheduler is true
+
+redis:
+  enabled: true #Enable redis if you want more replica
+  architecture: standalone
+  auth:
+    enabled: false
+  url: redis://redis:6379/0 #Your custom redis url (make sure redis.enabled is set to false)
 
 image:
   repository: mageai/mageai

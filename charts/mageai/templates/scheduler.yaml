@@ -1,4 +1,4 @@
-{{- if not .Values.seperateScheduler }}
+{{- if .Values.seperateScheduler }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.scheduler.replicaCount }}
   selector:
     matchLabels:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
