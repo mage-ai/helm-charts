@@ -2,11 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "mageai.fullname" . }}
+  name: {{ .Values.webServer.name }}
   labels:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.webService.replicaCount }}
+  replicas: {{ .Values.webServer.replicaCount }}
   selector:
     matchLabels:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
@@ -33,9 +33,9 @@ spec:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
               value: redis://mage-chart-redis-headless:6379/0
-          {{- else if .Values.redis.url}}
+          {{- else if .Values.redis.url }}
             - name: REDIS_URL
-              values: {{.Values.redis.url}}
+              value: {{ .Values.redis.url }}
           {{- end }}
           command: ["sh", "-c", "until nc -z -v $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f1) $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f2); do sleep 1; done"]
       containers:
@@ -98,7 +98,7 @@ spec:
               value: redis://redis://mage-chart-redis-headless:6379/0
           {{- else if .Values.redis.url}}
             - name: REDIS_URL
-              values: {{.Values.redis.url}}
+              value: {{ .Values.redis.url }}
           {{- end }}
           volumeMounts:
           {{- if .Values.volumes }}
