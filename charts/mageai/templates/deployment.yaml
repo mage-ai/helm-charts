@@ -1,4 +1,4 @@
-{{- if not .Values.seperateScheduler }}
+{{- if not .Values.standaloneScheduler }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
