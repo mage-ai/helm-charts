@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "mageai.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "mageai.fullname" . }}:{{ .Values.service.port }}{{ include "mageai.basePath" . }}']
   restartPolicy: Never
