@@ -67,3 +67,16 @@ Generate chart secret name
 {{- define "mageai.secretName" -}}
 {{ default (printf "%s-secret-env" (include "mageai.fullname" .)) .Values.existingSecret }}
 {{- end -}}
+
+{{/*
+Base path
+*/}}
+{{- define "mageai.basePath" -}}
+{{- if .Values.extraEnvs }}
+{{- range .Values.extraEnvs }}
+{{- if eq .name "MAGE_BASE_PATH" }}
+{{- printf "/%s" .value }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
