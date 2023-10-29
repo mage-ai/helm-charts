@@ -1,5 +1,0 @@
-dependencies:
-  - name: redis
-    version: 18.1.1
-    repository: https://charts.bitnami.com/bitnami
-    condition: redis.enabled
