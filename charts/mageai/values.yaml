@@ -5,20 +5,24 @@
 replicaCount: 1
 standaloneScheduler: true
 
+# Effective if standaloneScheduler is true
 scheduler:
-  replicaCount: 1 # Effective if standaloneScheduler is true
+  replicaCount: 1
   name: mageai-scheduler
 
+
+# Effective if standaloneScheduler is true
 webServer:
-  replicaCount: 1 # Effective if standaloneScheduler is true
+  replicaCount: 1
   name: mageai-webserver
 
+# Enable redis if you want more replica
 redis:
-  enabled: false # Enable redis if you want more replicas
+  enabled: false
   architecture: standalone
   auth:
     enabled: false
-  # Your custom redis URL (make sure redis.enabled is set to false)
+  # Your custom redis url (make sure redis.enabled is set to false)
   # url: redis://redis:6379/0
 
 image:
