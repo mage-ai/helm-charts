@@ -1,0 +1,30 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azure-files-sc
+provisioner: file.csi.azure.com
+allowVolumeExpansion: true
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  # optional parameters
+  # - uid=0
+  # - gid=0
+  # - cache=strict
+  # - mfsymlinks
+  # - nobrl # uncomment if you're planning on using SQLite
+parameters:
+  skuName: Standard_LRS
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: azure-files-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azure-files-sc
+  resources:
+    requests:
+      storage: 5Gi
