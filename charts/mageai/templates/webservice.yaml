@@ -1,12 +1,12 @@
-{{- if not .Values.standaloneScheduler }}
+{{- if .Values.standaloneScheduler }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "mageai.fullname" . }}
+  name: {{ .Values.webServer.name }}
   labels:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.webServer.replicaCount }}
   selector:
     matchLabels:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
@@ -98,7 +98,7 @@ spec:
               value: redis://{{.Release.Name}}-redis-headless:6379/0
           {{- else if .Values.redis.url}}
             - name: REDIS_URL
-              value: {{.Values.redis.url}}
+              value: {{ .Values.redis.url }}
           {{- end }}
           volumeMounts:
           {{- if .Values.volumes }}
