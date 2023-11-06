@@ -26,6 +26,7 @@ spec:
       serviceAccountName: {{ include "mageai.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
       initContainers:
         - name: wait-for-redis
           image: alpine
@@ -33,11 +34,12 @@ spec:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
               value: redis://{{.Release.Name}}-redis-headless:6379/0
-          {{- else if .Values.redis.url }}
+          {{- else if .Values.redis.customRedisURL }}
             - name: REDIS_URL
-              value: {{ .Values.redis.url }}
+              value: {{ .Values.redis.customRedisURL }}
           {{- end }}
           command: ["sh", "-c", "until nc -z -v $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f1) $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f2); do sleep 1; done"]
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -95,10 +97,10 @@ spec:
           {{- end }}
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
-              value: redis://{{.Release.Name}}-redis-headless:6379/0
-          {{- else if .Values.redis.url}}
+              value: redis://{{ .Release.Name }}-redis-headless:6379/0
+          {{- else if .Values.redis.customRedisURL }}
             - name: REDIS_URL
-              value: {{.Values.redis.url}}
+              value: {{ .Values.redis.customRedisURL }}
           {{- end }}
           volumeMounts:
           {{- if .Values.volumes }}
