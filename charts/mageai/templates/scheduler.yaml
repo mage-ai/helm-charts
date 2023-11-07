@@ -1,15 +1,15 @@
-{{- if not .Values.standaloneScheduler }}
+{{- if .Values.standaloneScheduler }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "mageai.fullname" . }}
+  name: {{ .Values.scheduler.name }}
   labels:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.scheduler.replicaCount }}
   selector:
     matchLabels:
-      {{- include "mageai.selectorLabels" . | nindent 6 }}
+      {{- include "mageai.schedulerSelectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -17,7 +17,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "mageai.selectorLabels" . | nindent 8 }}
+        {{- include "mageai.schedulerSelectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -33,7 +33,7 @@ spec:
           env:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
-              value: redis://{{.Release.Name}}-redis-headless:6379/0
+              value: redis://{{ .Release.Name }}-redis-headless:6379/0
           {{- else if .Values.redis.customRedisURL }}
             - name: REDIS_URL
               value: {{ .Values.redis.customRedisURL }}
@@ -50,34 +50,6 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          {{- if .Values.customLivenessProbe }}
-          livenessProbe: {{- toYaml .Values.customLivenessProbe | nindent 12 }}
-          {{- else if .Values.livenessProbe.enabled }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.livenessProbe.path }}
-              port: {{ .Values.livenessProbe.port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            successThreshold: {{ .Values.livenessProbe.successThreshold }}
-            terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-          {{- end }}
-          {{- if .Values.customReadinessProbe }}
-          readinessProbe: {{- toYaml .Values.customReadinessProbe | nindent 12 }}
-          {{- else if .Values.readinessProbe.enabled }}
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.readinessProbe.path }}
-              port: {{ .Values.readinessProbe.port }}
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.readinessProbe.successThreshold }}
-            terminationGracePeriodSeconds: {{ .Values.readinessProbe.terminationGracePeriodSeconds }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           envFrom:

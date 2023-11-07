@@ -3,6 +3,27 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
+standaloneScheduler: true
+
+# Effective if standaloneScheduler is true
+scheduler:
+  replicaCount: 1
+  name: mageai-scheduler
+
+
+# Effective if standaloneScheduler is true
+webServer:
+  replicaCount: 1
+  name: mageai-webserver
+
+# Enable redis if you want more replica
+redis:
+  enabled: false
+  architecture: standalone
+  auth:
+    enabled: false
+  # Your custom redis url (make sure redis.enabled is set to false)
+  customRedisURL: ""
 
 image:
   repository: mageai/mageai
@@ -71,7 +92,7 @@ readinessProbe:
 # Custom liveness probe
 customLivenessProbe: {}
 
-# Custom rediness probe
+# Custom readiness probe
 customReadinessProbe: {}
 
 ingress:
@@ -120,7 +141,7 @@ extraVolumes:
 # config: Default configuration for mageai as environment variables. These get injected directly in the container.
 config: {}
 
-# existingSecret: Spcifies an existing secret to be used as environment variables. These get injected directly in the container.
+# existingSecret: Specifies an existing secret to be used as environment variables. These get injected directly in the container.
 existingSecret: ""
 
 # secrets: Default secrets for mageai as environment variables. These get injected directly in the container.

@@ -50,6 +50,16 @@ app.kubernetes.io/name: {{ include "mageai.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+
+{{/*
+Scheduler Selector labels
+*/}}
+{{- define "mageai.schedulerSelectorLabels" -}}
+app.kubernetes.io/name: {{ .Values.scheduler.name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+
 {{/*
 Create the name of the service account to use
 */}}
