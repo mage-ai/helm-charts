@@ -74,6 +74,8 @@ spec:
             - name: REDIS_URL
               value: {{ .Values.redis.customRedisURL }}
           {{- end }}
+            - name: INSTANCE_TYPE
+              value: scheduler
           volumeMounts:
           {{- if .Values.volumes }}
             - name: mage-fs
