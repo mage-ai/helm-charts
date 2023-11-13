@@ -1,6 +1,59 @@
 apiVersion: v1
 entries:
   mageai:
+  - annotations:
+      artifacthub.io/alternativeName: Mage
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/images: |
+        - name: mageai
+          image: mageai/mageai:0.9.16
+          platforms:
+            - linux/amd64
+            - linux/arm64
+        - name: busybox
+          image: busybox
+          whitelisted: true
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Homepage
+          url: https://www.mage.ai/
+        - name: Source
+          url: https://github.com/mage-ai/helm-charts
+        - name: Documentation
+          url: https://mage-ai.github.io/helm-charts/
+      artifacthub.io/maintainers: |
+        - name: Mage
+          email: eng@mage.ai
+      artifacthub.io/screenshots: |
+        - title: Build Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Build@2x.png
+        - title: Preview Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Preview@2x.png
+        - title: Launch Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Launch@2x.webp
+    apiVersion: v2
+    appVersion: 0.9.44
+    created: "2023-11-13T22:31:50.714808628Z"
+    dependencies:
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 18.1.1
+    description: A Helm chart for Mage AI
+    digest: 6c029cc66e934cfdc82ae67dbbcb951b16ff071b57574ae2f848c90ea8a53de8
+    home: https://www.mage.ai
+    icon: https://avatars.githubusercontent.com/u/69371472
+    maintainers:
+    - email: eng@mage.ai
+      name: mage-ai
+      url: https://www.mage.ai
+    name: mageai
+    sources:
+    - https://github.com/mage-ai/helm-charts/tree/master/charts/mageai
+    type: application
+    urls:
+    - https://github.com/mage-ai/helm-charts/releases/download/mageai-0.1.5/mageai-0.1.5.tgz
+    version: 0.1.5
   - apiVersion: v2
     appVersion: 0.9.16
     created: "2023-08-28T23:15:52.056790273Z"
@@ -59,4 +112,4 @@ entries:
     urls:
     - https://github.com/mage-ai/helm-charts/releases/download/mageai-0.1.0/mageai-0.1.0.tgz
     version: 0.1.0
-generated: "2023-08-28T23:15:52.056807473Z"
+generated: "2023-11-13T22:31:50.714827333Z"
