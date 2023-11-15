@@ -3,7 +3,7 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/images: |
     - name: mageai
-      image: mageai/mageai:0.9.16
+      image: mageai/mageai:0.9.44
       platforms:
         - linux/amd64
         - linux/arm64
