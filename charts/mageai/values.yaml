@@ -95,6 +95,9 @@ customLivenessProbe: {}
 # Custom readiness probe
 customReadinessProbe: {}
 
+# We recommend creating the ingress separately instead of creating it using this chart.
+# There is a corresponding Mage-Ingress chart to create an ingress for Mage if needed.
+# This section is kept here for backwards compatibility.
 ingress:
   enabled: false
   className: ""
