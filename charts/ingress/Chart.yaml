@@ -1,15 +1,6 @@
 annotations:
   artifacthub.io/alternativeName: Mage-Ingress
-  artifacthub.io/category: integration-delivery
-  artifacthub.io/images: |
-    - name: mageai
-      image: mageai/mageai:0.9.44
-      platforms:
-        - linux/amd64
-        - linux/arm64
-    - name: busybox
-      image: busybox
-      whitelisted: true
+  artifacthub.io/category: networking
   artifacthub.io/license: Apache-2.0
   artifacthub.io/links: |
     - name: Homepage
@@ -30,12 +21,6 @@ annotations:
       url: https://www.mage.ai/images/pages/home/screenshots/v5/Launch@2x.webp
 
 apiVersion: v2
-
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-# It is recommended to use it with quotes.
-appVersion: "0.9.55"
 
 description: A Helm chart for deploying ingress for Mage AI
 
