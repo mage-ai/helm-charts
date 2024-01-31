@@ -1,0 +1,8 @@
+{{- if .Values.ingress.enabled }}
+The following hosts were added to the ingress:
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- end }}
