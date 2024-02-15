@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
-standaloneScheduler: true
+standaloneScheduler: false
 
 # Effective if standaloneScheduler is true
 scheduler:
@@ -23,7 +23,7 @@ redis:
   auth:
     enabled: false
   # Your custom redis url (make sure redis.enabled is set to false)
-  # url: redis://redis:6379/0
+  customRedisURL: ""
 
 image:
   repository: mageai/mageai
@@ -95,6 +95,9 @@ customLivenessProbe: {}
 # Custom readiness probe
 customReadinessProbe: {}
 
+# We recommend creating the ingress separately instead of creating it using this chart.
+# There is a corresponding Mage-Ingress chart to create an ingress for Mage if needed.
+# This section is kept here for backwards compatibility.
 ingress:
   enabled: false
   className: ""

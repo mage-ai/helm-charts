@@ -1,15 +1,6 @@
 annotations:
-  artifacthub.io/alternativeName: Mage
-  artifacthub.io/category: integration-delivery
-  artifacthub.io/images: |
-    - name: mageai
-      image: mageai/mageai:0.9.44
-      platforms:
-        - linux/amd64
-        - linux/arm64
-    - name: busybox
-      image: busybox
-      whitelisted: true
+  artifacthub.io/alternativeName: Mage-Ingress
+  artifacthub.io/category: networking
   artifacthub.io/license: Apache-2.0
   artifacthub.io/links: |
     - name: Homepage
@@ -31,13 +22,7 @@ annotations:
 
 apiVersion: v2
 
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-# It is recommended to use it with quotes.
-appVersion: "0.9.55"
-
-description: A Helm chart for Mage AI
+description: A Helm chart for deploying ingress for Mage AI
 
 home: https://www.mage.ai
 
@@ -48,16 +33,11 @@ maintainers:
     url: https://www.mage.ai
     email: eng@mage.ai
 
-name: mageai
-dependencies:
-  - name: redis
-    version: 18.1.1
-    repository: https://charts.bitnami.com/bitnami
-    condition: redis.enabled
+name: mageai-ingress
 
 
 sources:
-- https://github.com/mage-ai/helm-charts/tree/master/charts/mageai
+- https://github.com/mage-ai/helm-charts/tree/master/charts/ingress
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -72,4 +52,4 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.2.1
+version: 0.0.1
