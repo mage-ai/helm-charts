@@ -51,7 +51,11 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- if .Values.scheduler.resources }}
+              {{- toYaml .Values.scheduler.resources | nindent 12 }}
+            {{- else }}
+              {{- toYaml .Values.resources | nindent 12 }}
+            {{- end }}
           envFrom:
             {{- if .Values.config }}
             - configMapRef:

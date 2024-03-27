@@ -79,7 +79,11 @@ spec:
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           {{- end }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- if .Values.webServer.resources }}
+              {{- toYaml .Values.webServer.resources | nindent 12 }}
+            {{- else }}
+              {{- toYaml .Values.resources | nindent 12 }}
+            {{- end }}
           envFrom:
             {{- if .Values.config }}
             - configMapRef:
