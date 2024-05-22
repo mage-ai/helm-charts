@@ -117,6 +117,12 @@ customLivenessProbe: {}
 # Custom readiness probe
 customReadinessProbe: {}
 
+# Horizontal pod autoscaler
+# hpa:
+#   minReplicas: 1
+#   maxReplicas: 10
+#   targetCPUUtilizationPercentage: 50
+
 # We recommend creating the ingress separately instead of creating it using this chart.
 # There is a corresponding Mage-Ingress chart to create an ingress for Mage if needed.
 # This section is kept here for backwards compatibility.

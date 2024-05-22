@@ -1,0 +1,12 @@
+{{- if .Values.hpa -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: deployment-name-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mageai.fullname" . }}
+  {{- toYaml .Values.hpa | nindent 2 }}
+{{- end }}
