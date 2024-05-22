@@ -20,7 +20,10 @@ scheduler:
     # requests:
     #   cpu: 100m
     #   memory: 128Mi
-
+  # hpa:
+  #   minReplicas: 1
+  #   maxReplicas: 10
+  #   targetCPUUtilizationPercentage: 50
 
 # Effective if standaloneScheduler is true
 webServer:
@@ -37,6 +40,10 @@ webServer:
     # requests:
     #   cpu: 100m
     #   memory: 128Mi
+  # hpa:
+  #   minReplicas: 1
+  #   maxReplicas: 10
+  #   targetCPUUtilizationPercentage: 50
 
 # Enable redis if you want more replica
 redis:
