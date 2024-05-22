@@ -1,0 +1,46 @@
+{{- if not .Values.standaloneScheduler }}
+
+{{- if .Values.hpa -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mageai.fullname" . }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mageai.fullname" . }}
+  {{- toYaml .Values.hpa | nindent 2 }}
+{{- end }}
+
+{{- else }}
+
+{{- if .Values.scheduler.hpa -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.scheduler.name }}-scheduler-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.scheduler.name }}
+  {{- toYaml .Values.scheduler.hpa | nindent 2 }}
+{{- end }}
+
+---
+
+{{- if .Values.webServer.hpa -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.webServer.name }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.webServer.name }}
+  {{- toYaml .Values.webServer.hpa | nindent 2 }}
+{{- end }}
+
+{{- end }}
