@@ -52,7 +52,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: 6789
               protocol: TCP
           {{- if .Values.customLivenessProbe }}
           livenessProbe: {{- toYaml .Values.customLivenessProbe | nindent 12 }}
