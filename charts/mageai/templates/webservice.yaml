@@ -109,10 +109,9 @@ spec:
             - name: INSTANCE_TYPE
               value: web_server
           volumeMounts:
-          {{- if .Values.volumes }}
             - name: mage-fs
               mountPath: /home/src
-          {{- else if .Values.extraVolumeMounts }}
+          {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
           {{- end }}
       {{- with .Values.nodeSelector }}

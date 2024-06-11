@@ -107,10 +107,9 @@ spec:
               value: {{ .Values.redis.customRedisURL }}
           {{- end }}
           volumeMounts:
-          {{- if .Values.volumes }}
             - name: mage-fs
               mountPath: /home/src
-          {{- else if .Values.extraVolumeMounts }}
+          {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
           {{- end }}
         {{- if .Values.extraContainers }}
