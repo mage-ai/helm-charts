@@ -119,7 +119,7 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.webServer.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}

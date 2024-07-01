@@ -25,6 +25,19 @@ scheduler:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
+  # affinity for mageai-scheduler pod
+  affinity: {}
+  # affinity:
+  #   podAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #         - key: app.kubernetes.io/name
+  #           operator: In
+  #           values:
+  #           - mageai
+  #       topologyKey: "kubernetes.io/hostname"
+
 # Effective if standaloneScheduler is true
 webServer:
   replicaCount: 1
@@ -44,6 +57,19 @@ webServer:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+
+  # affinity for mageai-webserver pod
+  affinity: {}
+  # affinity:
+  #   podAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #         - key: app.kubernetes.io/name
+  #           operator: In
+  #           values:
+  #           - mageai-scheduler
+  #       topologyKey: "kubernetes.io/hostname"
 
 # Enable redis if you want more replica
 redis:
@@ -164,8 +190,6 @@ resources: {}
 nodeSelector: {}
 
 tolerations: []
-
-affinity: {}
 
 extraVolumeMounts:
   - name: mage-fs
