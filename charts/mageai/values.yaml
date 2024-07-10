@@ -45,6 +45,15 @@ webServer:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
+# Enable Postgres as the DB
+postgresql:
+  enabled: false
+  fullnameOverride: "postgresql-service"
+  auth:
+    username: your_username
+    password: your_password
+    database: your_database
+
 # Enable redis if you want more replica
 redis:
   enabled: false

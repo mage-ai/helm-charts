@@ -26,19 +26,26 @@ spec:
       serviceAccountName: {{ include "mageai.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
+      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled }}
       initContainers:
+        {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
         - name: wait-for-redis
           image: alpine
           env:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
-              value: redis://{{ .Release.Name }}-redis-headless:6379/0
+              value: redis://{{.Release.Name}}-redis-headless:6379/0
           {{- else if .Values.redis.customRedisURL }}
             - name: REDIS_URL
               value: {{ .Values.redis.customRedisURL }}
           {{- end }}
           command: ["sh", "-c", "until nc -z -v $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f1) $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f2); do sleep 1; done"]
+        {{- end }}
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-postgres
+          image: busybox
+          command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -105,6 +112,10 @@ spec:
           {{- else if .Values.redis.customRedisURL }}
             - name: REDIS_URL
               value: {{ .Values.redis.customRedisURL }}
+          {{- end }}
+          {{- if .Values.postgresql.enabled }}
+            - name: MAGE_DATABASE_CONNECTION_URL
+              value: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ .Values.postgresql.fullnameOverride }}:5432/{{ .Values.postgresql.auth.database }}
           {{- end }}
             - name: INSTANCE_TYPE
               value: web_server
