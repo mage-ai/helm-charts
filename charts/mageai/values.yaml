@@ -185,6 +185,14 @@ extraVolumes:
     hostPath:
       path: /path/to/mage_project
 
+persistence:
+  enabled: false
+  storageClassName: storage-class-name
+  size: 5Gi
+  # csi:
+  #   driver: efs.csi.aws.com
+  #   volumeHandle: fs-0123456789
+
 # config: Default configuration for mageai as environment variables. These get injected directly in the container.
 config: {}
 
