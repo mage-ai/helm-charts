@@ -191,6 +191,8 @@ nodeSelector: {}
 
 tolerations: []
 
+affinity: {}
+
 extraVolumeMounts:
   - name: mage-fs
     mountPath: /home/src
