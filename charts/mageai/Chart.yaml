@@ -3,7 +3,7 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/images: |
     - name: mageai
-      image: mageai/mageai:0.9.74
+      image: mageai/mageai:0.9.44
       platforms:
         - linux/amd64
         - linux/arm64
@@ -35,7 +35,7 @@ apiVersion: v2
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "0.9.74"
+appVersion: "0.9.72"
 
 description: A Helm chart for Mage AI
 
@@ -51,11 +51,11 @@ maintainers:
 name: mageai
 dependencies:
   - name: postgresql
-    version: 16.0.1
+    version: 15.5.15
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: redis
-    version: 20.2.0
+    version: 18.1.1
     repository: https://charts.bitnami.com/bitnami
     condition: redis.enabled
 
