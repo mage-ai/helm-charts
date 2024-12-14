@@ -209,3 +209,6 @@ extraEnvs:
     valueFrom:
       fieldRef:
         fieldPath: metadata.namespace
+
+cleanupJob:
+  enabled: false
