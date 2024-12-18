@@ -212,3 +212,5 @@ extraEnvs:
 
 cleanupJob:
   enabled: false
+  clean_variable_cli_args: ""
+  clean_log_cli_args: ""

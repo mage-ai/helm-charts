@@ -21,8 +21,8 @@ spec:
                 - -c
                 - |
                   repo_name="${USER_CODE_PATH:-default_repo}" &&
-                  mage clean-cached-variables "$repo_name" &&
-                  mage clean-old-logs "$repo_name"
+                  mage clean-cached-variables "$repo_name" {{.Values.cleanupJob.clean_variable_cli_args | default ""}} &&
+                  mage clean-old-logs "$repo_name" {{.Values.cleanupJob.clean_log_cli_args | default ""}}
               env:
               {{- if .Values.env }}
                 {{- toYaml .Values.env | nindent 16 }}
