@@ -18,6 +18,7 @@ spec:
       {{- end }}
       labels:
         {{- include "mageai.selectorLabels" . | nindent 8 }}
+        {{- toYaml .Values.webServer.labels | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
