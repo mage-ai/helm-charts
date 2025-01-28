@@ -33,6 +33,63 @@ entries:
           url: https://www.mage.ai/images/pages/home/screenshots/v5/Launch@2x.webp
     apiVersion: v2
     appVersion: 0.9.74
+    created: "2025-01-28T17:52:12.534408305Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.5.15
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 18.1.1
+    description: A Helm chart for Mage AI
+    digest: 352b66e8f7304c8736fea20c1711b52a0f56a1e20888239c32c5eee090bc3385
+    home: https://www.mage.ai
+    icon: https://avatars.githubusercontent.com/u/69371472
+    maintainers:
+    - email: eng@mage.ai
+      name: mage-ai
+      url: https://www.mage.ai
+    name: mageai
+    sources:
+    - https://github.com/mage-ai/helm-charts/tree/master/charts/mageai
+    type: application
+    urls:
+    - https://github.com/mage-ai/helm-charts/releases/download/mageai-0.2.10/mageai-0.2.10.tgz
+    version: 0.2.10
+  - annotations:
+      artifacthub.io/alternativeName: Mage
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/images: |
+        - name: mageai
+          image: mageai/mageai:0.9.74
+          platforms:
+            - linux/amd64
+            - linux/arm64
+        - name: busybox
+          image: busybox
+          whitelisted: true
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Homepage
+          url: https://www.mage.ai/
+        - name: Source
+          url: https://github.com/mage-ai/helm-charts
+        - name: Documentation
+          url: https://mage-ai.github.io/helm-charts/
+      artifacthub.io/maintainers: |
+        - name: Mage
+          email: eng@mage.ai
+      artifacthub.io/screenshots: |
+        - title: Build Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Build@2x.png
+        - title: Preview Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Preview@2x.png
+        - title: Launch Pipeline
+          url: https://www.mage.ai/images/pages/home/screenshots/v5/Launch@2x.webp
+    apiVersion: v2
+    appVersion: 0.9.74
     created: "2024-12-18T23:47:54.052004974Z"
     dependencies:
     - condition: postgresql.enabled
@@ -701,4 +758,4 @@ entries:
     urls:
     - https://github.com/mage-ai/helm-charts/releases/download/mageai-ingress-0.0.1/mageai-ingress-0.0.1.tgz
     version: 0.0.1
-generated: "2024-12-18T23:47:54.052105383Z"
+generated: "2025-01-28T17:52:12.534527108Z"
