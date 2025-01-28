@@ -4,7 +4,7 @@ kind: CronJob
 metadata:
   name: {{ include "mageai.fullname" . }}-cleanup-job
 spec:
-  schedule: {{ .Values.cleanupJob.schedule_cron | default "0 * * * *" }}
+  schedule: {{ .Values.cleanupJob.schedule_cron | default "0 * * * *" | quote }}
   jobTemplate:
     spec:
       template:
