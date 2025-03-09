@@ -30,7 +30,12 @@ spec:
       initContainers:
         {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
         - name: wait-for-redis
-          image: alpine
+          {{- if .Values.image.redisWait.digest }}
+          image: "{{ .Values.image.redisWait.repository }}@{{ .Values.image.redisWait.digest }}"
+          {{- else }}
+          image: "{{ .Values.image.redisWait.repository }}:{{ .Values.image.redisWait.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
@@ -43,7 +48,12 @@ spec:
         {{- end }}
         {{- if .Values.postgresql.enabled }}
         - name: wait-for-postgres
-          image: busybox
+          {{- if .Values.image.postgresWait.digest }}
+          image: "{{ .Values.image.postgresWait.repository }}@{{ .Values.image.postgresWait.digest }}"
+          {{- else }}
+          image: "{{ .Values.image.postgresWait.repository }}:{{ .Values.image.postgresWait.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
         {{- end }}
       {{- end }}

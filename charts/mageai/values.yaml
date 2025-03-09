@@ -64,10 +64,19 @@ redis:
   customRedisURL: ""
 
 image:
+  redisWait:
+    repository: alpine
+    tag: latest
+    digest: ""
+  postgresWait:
+    repository: busybox
+    tag: latest
+    digest: ""
   repository: mageai/mageai
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  digest: ""
 
 imagePullSecrets: []
 nameOverride: "mageai"
