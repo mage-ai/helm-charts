@@ -1,0 +1,20 @@
+{{- if .Values.scheduler.PodDisruptionBudget.create }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mageai.fullname" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+spec:
+   {{- if .Values.scheduler.PodDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.scheduler.PodDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if or .Values.scheduler.PodDisruptionBudget.maxUnavailable ( not .Values.scheduler.PodDisruptionBudget.minAvailable ) }}
+  maxUnavailable: {{ .Values.scheduler.PodDisruptionBudget.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mageai.schedulerSelectorLabels" . | nindent 6 }}
+...
+{{- end }}
