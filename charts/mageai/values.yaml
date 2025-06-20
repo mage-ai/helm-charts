@@ -64,12 +64,30 @@ redis:
   customRedisURL: ""
 
 image:
+  # The main Mage container image repository.
+  # Change this if you want to pull from a private registry.
   repository: mageai/mageai
+  # Image pull policy for the main container.
+  # Valid values: Always, IfNotPresent, Never
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
+# List of imagePullSecrets to use for pulling images from private registries.
+# These must already exist in the target namespace.
+# Example:
+# imagePullSecrets:
+#   - name: my-private-registry-secret
 imagePullSecrets: []
+
+initContainerImages:
+  # Image used in initContainers for Redis readiness check.
+  # Default is public Docker Hub Alpine image.
+  alpine: alpine
+  # Image used in initContainers for PostgreSQL readiness check.
+  # Default is public Docker Hub BusyBox image.
+  busybox: busybox
+
 nameOverride: "mageai"
 fullnameOverride: "mageai"
 

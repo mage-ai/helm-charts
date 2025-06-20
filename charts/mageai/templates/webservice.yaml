@@ -33,7 +33,7 @@ spec:
       initContainers:
         {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
         - name: wait-for-redis
-          image: alpine
+          image: {{ .Values.initContainerImages.alpine }}
           env:
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
@@ -46,7 +46,7 @@ spec:
         {{- end }}
         {{- if .Values.postgresql.enabled }}
         - name: wait-for-postgres
-          image: busybox
+          image: {{ .Values.initContainerImages.busybox }}
           command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
         {{- end }}
       {{- end }}
