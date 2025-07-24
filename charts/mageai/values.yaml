@@ -50,9 +50,23 @@ postgresql:
   enabled: false
   fullnameOverride: "postgresql-service"
   auth:
-    username: your_username
-    password: your_password
     database: your_database
+    username: your_username
+
+    # either specify the password in cleartext (not recommended for gitops) or use an existing secret 
+    # defining a cleartext password will override the secret
+
+    # password: your_password
+
+    # Use an existing secret for the password
+    existingSecret: ""
+    # the keys in the secret to use
+    secretKeys:
+      adminPasswordKey: "adminPassword"
+      userPasswordKey: "userPassword"
+      replicationPasswordKey: "replicationPassword"
+      # the connection string needs to match the database name and username defined above
+      connectionStringKey: connectionString # postgresql://your_username:your_password@postgresql-service:5432/your_database
 
 # Enable redis if you want more replica
 redis:
