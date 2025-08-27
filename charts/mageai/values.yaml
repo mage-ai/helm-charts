@@ -25,6 +25,18 @@ scheduler:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
+  topologySpreadConstraints: []
+  #   - maxSkew: 1
+  #     topologyKey: topology.kubernetes.io/zone
+  #     whenUnsatisfiable: ScheduleAnyway
+  #     matchLabelKeys:
+  #       - pod-template-hash
+  #   - maxSkew: 1
+  #     topologyKey: kubernetes.io/hostname
+  #     whenUnsatisfiable: DoNotSchedule
+  #     matchLabelKeys:
+  #       - pod-template-hash
+
 # Effective if standaloneScheduler is true
 webServer:
   replicaCount: 1
@@ -44,6 +56,17 @@ webServer:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+  topologySpreadConstraints: []
+  #   - maxSkew: 1
+  #     topologyKey: topology.kubernetes.io/zone
+  #     whenUnsatisfiable: ScheduleAnyway
+  #     matchLabelKeys:
+  #       - pod-template-hash
+  #   - maxSkew: 1
+  #     topologyKey: kubernetes.io/hostname
+  #     whenUnsatisfiable: DoNotSchedule
+  #     matchLabelKeys:
+  #       - pod-template-hash
 
 # Enable Postgres as the DB
 postgresql:
@@ -173,6 +196,18 @@ resources: {}
 nodeSelector: {}
 
 tolerations: []
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    matchLabelKeys:
+      - pod-template-hash
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    matchLabelKeys:
+      - pod-template-hash
 
 affinity: {}
 
