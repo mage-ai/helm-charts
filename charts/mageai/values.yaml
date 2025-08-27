@@ -24,6 +24,9 @@ scheduler:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+  pdb:
+    create: false
+    maxUnavailable: "50%"
 
 # Effective if standaloneScheduler is true
 webServer:
@@ -44,6 +47,9 @@ webServer:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+  pdb:
+    create: false
+    maxUnavailable: 50%
 
 # Enable Postgres as the DB
 postgresql:
@@ -169,6 +175,10 @@ resources: {}
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
+
+pdb:
+  create: false
+  maxUnavailable: 50%
 
 nodeSelector: {}
 
