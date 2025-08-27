@@ -1,0 +1,20 @@
+{{- if and .Values.standaloneScheduler .Values.scheduler.pdb.create }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mageai.fullname" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+spec:
+   {{- if .Values.scheduler.pdb.minAvailable }}
+  minAvailable: {{ .Values.scheduler.pdb.minAvailable }}
+  {{- end }}
+  {{- if or .Values.scheduler.pdb.maxUnavailable ( not .Values.scheduler.pdb.minAvailable ) }}
+  maxUnavailable: {{ .Values.scheduler.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mageai.schedulerSelectorLabels" . | nindent 6 }}
+...
+{{- end }}

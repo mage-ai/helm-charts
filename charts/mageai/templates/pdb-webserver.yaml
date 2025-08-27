@@ -1,0 +1,20 @@
+{{- if and .Values.standaloneScheduler .Values.webServer.pdb.create }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.webServer.name }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+spec:
+   {{- if .Values.webServer.pdb.minAvailable }}
+  minAvailable: {{ .Values.webServer.pdb.minAvailable }}
+  {{- end }}
+  {{- if or .Values.webServer.pdb.maxUnavailable ( not .Values.webServer.pdb.minAvailable ) }}
+  maxUnavailable: {{ .Values.webServer.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mageai.selectorLabels" . | nindent 6 }}
+...
+{{- end }}
