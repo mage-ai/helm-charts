@@ -7,6 +7,9 @@ spec:
   schedule: {{ .Values.cleanupJob.schedule_cron | default "0 * * * *" | quote }}
   jobTemplate:
     spec:
+      {{- if .Values.cleanupJob.ttlSecondsAfterFinished }}
+      ttlSecondsAfterFinished: {{ .Values.cleanupJob.ttlSecondsAfterFinished }}
+      {{- end }}
       template:
         spec:
           containers:
