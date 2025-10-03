@@ -53,6 +53,11 @@ postgresql:
     username: your_username
     password: your_password
     database: your_database
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: 16.3.0-debian-12-r19
+    pullPolicy: IfNotPresent
 
 # Enable redis if you want more replica
 redis:
@@ -62,6 +67,11 @@ redis:
     enabled: false
   # Your custom redis url (make sure redis.enabled is set to false)
   customRedisURL: ""
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+    tag: 7.2.1-debian-11-r0
+    pullPolicy: IfNotPresent
 
 image:
   # The main Mage container image repository.
