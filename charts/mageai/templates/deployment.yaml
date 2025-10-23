@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "mageai.fullname" . }}
-  {{- with .Values.DeploymentAnnotations }}
+  {{- with .Values.deploymentAnnotations }}
   annotations:
     {{- toYaml . | nindent 8 }}
   {{- end }}
