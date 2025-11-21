@@ -7,6 +7,9 @@ spec:
   schedule: {{ .Values.cleanupJob.schedule_cron | default "0 * * * *" | quote }}
   jobTemplate:
     spec:
+      {{- if .Values.cleanupJob.ttlSecondsAfterFinished }}
+      ttlSecondsAfterFinished: {{ .Values.cleanupJob.ttlSecondsAfterFinished }}
+      {{- end }}
       template:
         spec:
           containers:
@@ -37,6 +40,12 @@ spec:
                 {{- toYaml .Values.extraVolumeMounts | nindent 16 }}
               {{- end }}
           restartPolicy: OnFailure
+          resources:
+            {{- toYaml .Values.cleanupJob.resources | nindent 12 }}
+          {{- with .Values.cleanupJob.nodeSelector }}
+          nodeSelector:
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumes:
           {{- if .Values.volumes }}
             {{- toYaml .Values.volumes | nindent 12 }}
