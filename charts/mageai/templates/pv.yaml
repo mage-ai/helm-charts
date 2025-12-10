@@ -12,7 +12,7 @@ spec:
     storage: {{ .Values.persistence.size}}
   volumeMode: Filesystem
   accessModes:
-    - ReadWriteMany
+  {{- toYaml .Values.persistence.accessModes | nindent 4 }}
   persistentVolumeReclaimPolicy: Retain
   storageClassName: {{ .Values.persistence.storageClassName}}
   {{- with .Values.persistence.csi }}
@@ -28,7 +28,7 @@ metadata:
   name: pvc-{{ include "mageai.fullname" . }}
 spec:
   accessModes:
-    - ReadWriteMany
+  {{- toYaml .Values.persistence.accessModes | nindent 4 }}
   storageClassName: {{ .Values.persistence.storageClassName}}
   resources:
     requests:

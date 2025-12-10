@@ -125,7 +125,7 @@ spec:
               value: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ .Values.postgresql.fullnameOverride }}:5432/{{ .Values.postgresql.auth.database }}
           {{- end }}
           volumeMounts:
-          {{- if .Values.volumes }}
+          {{- if or .Values.volumes (and .Values.persistence .Values.persistence.enabled) }}
             - name: mage-fs
               mountPath: /home/src
           {{- else if .Values.extraVolumeMounts }}
@@ -147,9 +147,15 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      {{- if and .Values.persistence .Values.persistence.enabled }}
+        - name: mage-fs
+          persistentVolumeClaim:
+            claimName: "pvc-{{ include "mageai.fullname" . }}"
+      {{- end }}
       {{- if .Values.volumes }}
         {{- toYaml .Values.volumes | nindent 8 }}
-      {{- else if .Values.extraVolumes -}}
+      {{- end }}
+      {{- if .Values.extraVolumes -}}
         {{ toYaml .Values.extraVolumes | nindent 8 }}
       {{- end }}
 {{- end }}

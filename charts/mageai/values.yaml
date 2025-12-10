@@ -208,19 +208,25 @@ tolerations: []
 
 affinity: {}
 
-extraVolumeMounts:
-  - name: mage-fs
-    mountPath: /home/src
+# Configure extra volumes.
+extraVolumes: []
+  # - name: mage-fs
+  #   mountPath: /home/src
 
-extraVolumes:
-  - name: mage-fs
-    hostPath:
-      path: /path/to/mage_project
+# Configure extra volume mounts to provide persistence for additional paths in the container's file system.
+extraVolumeMounts: []
+  # - name: mage-fs
+  #   hostPath:
+  #     path: /path/to/mage_project
+
 
 persistence:
   enabled: false
   storageClassName: storage-class-name
   size: 5Gi
+  accessModes:
+    - ReadWriteMany
+  # dynamicProvisioning: true
   # csi:
   #   driver: efs.csi.aws.com
   #   volumeHandle: fs-0123456789
