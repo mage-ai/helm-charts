@@ -94,12 +94,32 @@ spec:
           {{- end }}
             - name: INSTANCE_TYPE
               value: scheduler
+          {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+            - name: WORKSPACE_DEFAULT_CONFIG_PATH
+              value: /etc/mage/workspace-config.yaml
+          {{- end }}
+          {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+            - name: K8S_DEFAULT_CONFIG_PATH
+              value: /etc/mage/k8s-executor-config.yaml
+          {{- end }}
           volumeMounts:
           {{- if .Values.volumes }}
             - name: mage-fs
               mountPath: /home/src
           {{- else if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+            - name: workspace-config
+              mountPath: /etc/mage/workspace-config.yaml
+              subPath: config.yaml
+              readOnly: true
+          {{- end }}
+          {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+            - name: k8s-executor-config
+              mountPath: /etc/mage/k8s-executor-config.yaml
+              subPath: config.yaml
+              readOnly: true
           {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -118,5 +138,15 @@ spec:
         {{- toYaml .Values.volumes | nindent 8 }}
       {{- else if .Values.extraVolumes -}}
         {{ toYaml .Values.extraVolumes | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+        - name: workspace-config
+          configMap:
+            name: {{ include "mageai.fullname" . }}-workspace-config
+      {{- end }}
+      {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+        - name: k8s-executor-config
+          configMap:
+            name: {{ include "mageai.fullname" . }}-k8s-executor-config
       {{- end }}
 {{- end }}

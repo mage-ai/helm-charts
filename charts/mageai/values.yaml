@@ -2,10 +2,17 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# ------------------------------------------------------------------------------
+# Deployment topology
+# ------------------------------------------------------------------------------
+
+# Number of Mage replicas to run (when standaloneScheduler is false)
 replicaCount: 1
+
+# When true, splits Mage into separate web server and scheduler deployments for scaling
 standaloneScheduler: false
 
-# Effective if standaloneScheduler is true
+# Scheduler deployment settings (only used when standaloneScheduler is true)
 scheduler:
   replicaCount: 1
   name: mageai-scheduler
@@ -25,7 +32,7 @@ scheduler:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
-# Effective if standaloneScheduler is true
+# Web server deployment settings (only used when standaloneScheduler is true)
 webServer:
   replicaCount: 1
   name: mageai-webserver
@@ -45,7 +52,11 @@ webServer:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
-# Enable Postgres as the DB
+# ------------------------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------------------------
+
+# PostgreSQL database for Mage metadata and pipeline state
 postgresql:
   enabled: false
   fullnameOverride: "postgresql-service"
@@ -59,7 +70,7 @@ postgresql:
     tag: 16.3.0-debian-12-r19
     pullPolicy: IfNotPresent
 
-# Enable redis if you want more replica
+# Redis for distributed locking and caching (required for multiple replicas)
 redis:
   enabled: false
   architecture: standalone
@@ -90,6 +101,7 @@ image:
 #   - name: my-private-registry-secret
 imagePullSecrets: []
 
+# Lightweight images for init containers (Redis/PostgreSQL readiness checks)
 initContainerImages:
   # Image used in initContainers for Redis readiness check.
   # Default is public Docker Hub Alpine image.
@@ -98,7 +110,13 @@ initContainerImages:
   # Default is public Docker Hub BusyBox image.
   busybox: busybox
 
+# ------------------------------------------------------------------------------
+# Naming and RBAC
+# ------------------------------------------------------------------------------
+
+# Override the chart name in resource names
 nameOverride: "mageai"
+# Override the full name of resources (takes precedence over nameOverride)
 fullnameOverride: "mageai"
 
 serviceAccount:
@@ -110,12 +128,16 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: "mageai"
 
+# Annotations to add to the Deployment
 deploymentAnnotations: {}
 
+# Annotations to add to pods
 podAnnotations: {}
 
+# Labels to add to pods
 podLabels: {}
 
+# Security context for the pod
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -127,14 +149,21 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# ------------------------------------------------------------------------------
+# Service and networking
+# ------------------------------------------------------------------------------
+
 service:
   type: LoadBalancer
   port: 6789
-  # Annotations to add to the service
+  # Annotations to add to the service (e.g., for cloud load balancers)
   annotations: {}
 
-# Configure extra options for containers' liveness probes
-# If not configured, the probe is enabled using the following values
+# ------------------------------------------------------------------------------
+# Health checks
+# ------------------------------------------------------------------------------
+
+# Liveness probe configuration
 livenessProbe:
   enabled: true
   path: /api/status
@@ -146,8 +175,7 @@ livenessProbe:
   # terminationGracePeriodSeconds:
   timeoutSeconds: 10
 
-# Configure extra options for containers' readiness probes
-# If not configured, the probe is enabled using the following values
+# Readiness probe configuration
 readinessProbe:
   enabled: true
   path: /api/status
@@ -159,18 +187,19 @@ readinessProbe:
   # terminationGracePeriodSeconds:
   timeoutSeconds: 1
 
-# Custom liveness probe
+# Override with a fully custom liveness probe (replaces default when set)
 customLivenessProbe: {}
 
-# Custom readiness probe
+# Override with a fully custom readiness probe (replaces default when set)
 customReadinessProbe: {}
 
-# Horizontal pod autoscaler
+# Horizontal Pod Autoscaler for the main deployment
 # hpa:
 #   minReplicas: 1
 #   maxReplicas: 10
 #   targetCPUUtilizationPercentage: 50
 
+# Ingress for external access
 # We recommend creating the ingress separately instead of creating it using this chart.
 # There is a corresponding Mage-Ingress chart to create an ingress for Mage if needed.
 # This section is kept here for backwards compatibility.
@@ -202,21 +231,31 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+# Schedule pods only on nodes with these labels
 nodeSelector: {}
 
+# Allow pods to be scheduled on tainted nodes
 tolerations: []
 
+# Pod affinity/anti-affinity rules
 affinity: {}
 
+# ------------------------------------------------------------------------------
+# Storage and volumes
+# ------------------------------------------------------------------------------
+
+# Additional volume mounts for the Mage container
 extraVolumeMounts:
   - name: mage-fs
     mountPath: /home/src
 
+# Additional volumes (must include mage-fs for project code when not using persistence)
 extraVolumes:
   - name: mage-fs
     hostPath:
       path: /path/to/mage_project
 
+# Persistent volume for project storage (replaces hostPath when enabled)
 persistence:
   enabled: false
   storageClassName: storage-class-name
@@ -225,25 +264,85 @@ persistence:
   #   driver: efs.csi.aws.com
   #   volumeHandle: fs-0123456789
 
-# config: Default configuration for mageai as environment variables. These get injected directly in the container.
+# ------------------------------------------------------------------------------
+# Environment and configuration
+# ------------------------------------------------------------------------------
+
+# Environment variables injected into the Mage container (key-value pairs)
 config: {}
 
-# existingSecret: Specifies an existing secret to be used as environment variables. These get injected directly in the container.
+# Name of an existing Secret to use for environment variables (overrides secrets if both set)
 existingSecret: ""
 
-# secrets: Default secrets for mageai as environment variables. These get injected directly in the container.
-# Consider using a secret manager first, before sourcing secrets as environment variables.
+# Secrets to create and inject as environment variables (prefer a secret manager in production)
 secrets: {}
 
-# extraEnvs: Extra environment variables
+# Additional environment variables (supports valueFrom for field refs, etc.)
 extraEnvs:
   - name: KUBE_NAMESPACE
     valueFrom:
       fieldRef:
         fieldPath: metadata.namespace
 
+# CronJob for cleaning up old pipeline runs and logs
 cleanupJob:
   enabled: false
   clean_variable_cli_args: ""
   clean_log_cli_args: ""
   schedule_cron: "0 * * * *"  # Runs every hour
+
+# ------------------------------------------------------------------------------
+# Mage Pro features (workspaces and Kubernetes executor)
+# ------------------------------------------------------------------------------
+
+# Default workspace configuration for Mage Pro workspaces.
+# When enabled, creates a ConfigMap and mounts it at /etc/mage/workspace-config.yaml.
+# Sets WORKSPACE_DEFAULT_CONFIG_PATH env var for the Mage application.
+workspaceConfig:
+  enabled: false
+  enforce: false
+
+  # Resource limits and requests for workspace containers
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+
+  # nodeSelector:
+  #   node.kubernetes.io/instance-type: "m5.large"
+
+  # tolerations:
+  #   - key: "dedicated"
+  #     operator: "Equal"
+  #     value: "mage"
+  #     effect: "NoSchedule"
+
+# Default Kubernetes executor configuration for pipeline blocks.
+# When enabled, creates a ConfigMap and mounts it at /etc/mage/k8s-executor-config.yaml.
+# Sets K8S_DEFAULT_CONFIG_PATH env var for the Mage application.
+k8sExecutorConfig:
+  enabled: false
+  enforce: false
+
+  # Resource limits for executor pods
+  resourceLimits:
+    cpu: "2000m"
+    memory: "8Gi"
+
+  # Resource requests for executor pods
+  resourceRequests:
+    cpu: "1000m"
+    memory: "4Gi"
+
+  # Pod-level scheduling (nodeSelector, tolerations, affinity)
+  # pod:
+  #   nodeSelector:
+  #     workload: "data"
+  #   tolerations:
+  #     - key: "workload"
+  #       operator: "Equal"
+  #       value: "data"
+  #       effect: "NoSchedule"
