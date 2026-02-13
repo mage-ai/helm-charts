@@ -1,0 +1,11 @@
+{{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mageai.fullname" . }}-k8s-executor-config
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- toYaml .Values.k8sExecutorConfig | nindent 4 }}
+{{- end }}
