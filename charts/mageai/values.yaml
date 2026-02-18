@@ -300,6 +300,7 @@ cleanupJob:
 # Sets WORKSPACE_DEFAULT_CONFIG_PATH env var for the Mage application.
 workspaceConfig:
   enabled: false
+  # Whether to enforce the default config when it's conflicted with the user config
   enforce: false
 
   container_config:
@@ -331,6 +332,7 @@ workspaceConfig:
 # Sets K8S_DEFAULT_CONFIG_PATH env var for the Mage application.
 k8sExecutorConfig:
   enabled: false
+  # Whether to enforce the default config when it's conflicted with the user config
   enforce: false
 
   # Resource limits for executor pods
