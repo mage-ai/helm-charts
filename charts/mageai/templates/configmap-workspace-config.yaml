@@ -1,0 +1,11 @@
+{{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mageai.fullname" . }}-workspace-config
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- toYaml .Values.workspaceConfig | nindent 4 }}
+{{- end }}
