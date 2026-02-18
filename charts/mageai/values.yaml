@@ -296,8 +296,8 @@ cleanupJob:
 # ------------------------------------------------------------------------------
 
 # Default workspace configuration for Mage Pro workspaces.
-# When enabled, creates a ConfigMap and mounts it at /etc/mage/workspace-config.yaml.
-# Sets WORKSPACE_DEFAULT_CONFIG_PATH env var for the Mage application.
+# When enabled, creates a ConfigMap and mounts it at /etc/mage/workspace-config.yaml,
+# and sets the WORKSPACE_DEFAULT_CONFIG_PATH environment variable to point to this file.
 workspaceConfig:
   enabled: false
   # Whether to enforce the default config when it's conflicted with the user config
@@ -328,8 +328,8 @@ workspaceConfig:
 
 
 # Default Kubernetes executor configuration for pipeline blocks.
-# When enabled, creates a ConfigMap and mounts it at /etc/mage/k8s-executor-config.yaml.
-# Sets K8S_DEFAULT_CONFIG_PATH env var for the Mage application.
+# When enabled, creates a ConfigMap and mounts it at /etc/mage/k8s-executor-config.yaml,
+# and sets the K8S_DEFAULT_CONFIG_PATH environment variable to point to this file.
 k8sExecutorConfig:
   enabled: false
   # Whether to enforce the default config when it's conflicted with the user config
