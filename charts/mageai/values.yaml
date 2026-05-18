@@ -31,6 +31,16 @@ scheduler:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+  # Overrides global nodeSelector for the scheduler pod
+  nodeSelector: {}
+  # Overrides global tolerations for the scheduler pod
+  tolerations: []
+  # Overrides global affinity for the scheduler pod
+  affinity: {}
+  # Overrides global podAnnotations for the scheduler pod
+  podAnnotations: {}
+  # Overrides global podLabels for the scheduler pod
+  podLabels: {}
 
 # Web server deployment settings (only used when standaloneScheduler is true)
 webServer:
@@ -51,6 +61,16 @@ webServer:
   #   minReplicas: 1
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
+  # Overrides global nodeSelector for the webserver pod
+  nodeSelector: {}
+  # Overrides global tolerations for the webserver pod
+  tolerations: []
+  # Overrides global affinity for the webserver pod
+  affinity: {}
+  # Overrides global podAnnotations for the webserver pod
+  podAnnotations: {}
+  # Overrides global podLabels for the webserver pod
+  podLabels: {}
 
 # ------------------------------------------------------------------------------
 # Dependencies
