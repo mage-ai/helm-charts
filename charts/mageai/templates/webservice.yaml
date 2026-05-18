@@ -12,14 +12,19 @@ spec:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- if .Values.webServer.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.webServer.podAnnotations | nindent 8 }}
+      {{- else if .Values.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
       {{- end }}
       labels:
         {{- include "mageai.selectorLabels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
+        {{- if .Values.webServer.podLabels }}
+        {{- toYaml .Values.webServer.podLabels | nindent 8 }}
+        {{- else if .Values.podLabels }}
+        {{- toYaml .Values.podLabels | nindent 8 }}
         {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
@@ -149,17 +154,26 @@ spec:
               subPath: config.yaml
               readOnly: true
           {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- if .Values.webServer.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.webServer.nodeSelector | nindent 8 }}
+      {{- else if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- if .Values.webServer.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.webServer.affinity | nindent 8 }}
+      {{- else if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- if .Values.webServer.tolerations }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.webServer.tolerations | nindent 8 }}
+      {{- else if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
       {{- end }}
       volumes:
       {{- if .Values.volumes }}
