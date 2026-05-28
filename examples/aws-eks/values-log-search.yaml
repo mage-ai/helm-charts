@@ -1,0 +1,84 @@
+# values-log-search.yaml
+# Helm values override that adds OpenSearch-backed log search (deep search)
+# to a Mage Pro deployment on AWS EKS.
+#
+# Usage:
+#   helm install mageai ~/helm-charts/charts/mageai \
+#     --namespace mage \
+#     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml
+#
+#   helm upgrade mageai ~/helm-charts/charts/mageai \
+#     --namespace mage \
+#     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml \
+#     --reuse-values
+#
+# Prerequisites (apply before helm install/upgrade):
+#   kubectl apply -f examples/aws-eks/mage-data-pvc.yaml
+#   # Use fluent-bit-prod.conf (not fluent-bit.conf) — it has the K8s service DNS host.
+#   kubectl -n mage create configmap fluent-bit-config \
+#     --from-file=fluent-bit.conf=<path-to-mage-pro>/fluent-bit-prod.conf
+#   kubectl -n mage create configmap fluent-bit-parsers \
+#     --from-file=parsers.conf=<path-to-mage-pro>/fluent-bit-parsers.conf
+
+# ── Environment variables injected into the mageai container ─────────────────
+config:
+  # Tell Mage where to write log data; must match the PVC mount path below.
+  MAGE_DATA_DIR: /home/mage_data
+  # In-cluster OpenSearch service DNS (adjust namespace if opensearch is in a
+  # different namespace than mage-search).
+  OPENSEARCH_HOST: opensearch.mage-search.svc.cluster.local
+  OPENSEARCH_PORT: "9200"
+
+# ── Shared volumes ────────────────────────────────────────────────────────────
+extraVolumes:
+  - name: mage-fs
+    persistentVolumeClaim:
+      claimName: mage-fs          # project code PVC (already exists)
+  - name: mage-data
+    persistentVolumeClaim:
+      claimName: mage-data        # log data PVC — see mage-data-pvc.yaml
+  - name: fluent-bit-config
+    configMap:
+      name: fluent-bit-config
+  - name: fluent-bit-parsers
+    configMap:
+      name: fluent-bit-parsers
+  - name: fluent-bit-state
+    emptyDir: {}                  # replace with a PVC for state persistence across pod restarts
+
+# ── Volume mounts for the main mageai container ───────────────────────────────
+extraVolumeMounts:
+  - name: mage-fs
+    mountPath: /home/src
+  - name: mage-data
+    mountPath: /home/mage_data
+
+# ── Fluent Bit sidecar — reads log files and ships them to OpenSearch ─────────
+extraContainers:
+  - name: fluent-bit
+    image: fluent/fluent-bit:latest
+    securityContext:
+      runAsUser: 0                # root required to read log files written by Mage
+    command:
+      - /fluent-bit/bin/fluent-bit
+      - -c
+      - /fluent-bit/etc/fluent-bit.conf
+    volumeMounts:
+      - name: mage-data
+        mountPath: /home/mage_data
+        readOnly: true
+      - name: fluent-bit-config
+        mountPath: /fluent-bit/etc/fluent-bit.conf
+        subPath: fluent-bit.conf
+      - name: fluent-bit-parsers
+        mountPath: /fluent-bit/etc/parsers.conf
+        subPath: parsers.conf
+      - name: fluent-bit-state
+        mountPath: /var/lib/fluent-bit
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

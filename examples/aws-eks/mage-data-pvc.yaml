@@ -1,0 +1,23 @@
+# mage-data-pvc.yaml
+# Persistent Volume Claim for Mage log data shared between the mageai container
+# and the Fluent Bit sidecar.
+#
+# EFS (ReadWriteMany) is recommended for multi-replica deployments.
+# EBS (ReadWriteOnce / gp2) is sufficient for single-replica deployments.
+#
+# Usage:
+#   kubectl apply -f examples/aws-eks/mage-data-pvc.yaml -n mage
+#
+# EFS variant (multi-replica):
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mage-data
+  namespace: mage
+spec:
+  accessModes:
+    - ReadWriteMany       # requires EFS CSI driver; change to ReadWriteOnce for EBS
+  storageClassName: efs-sc  # change to gp2 for EBS
+  resources:
+    requests:
+      storage: 50Gi
