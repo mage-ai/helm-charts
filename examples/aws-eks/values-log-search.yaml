@@ -26,7 +26,7 @@ config:
   MAGE_DATA_DIR: /home/mage_data
   # In-cluster OpenSearch service DNS (adjust namespace if opensearch is in a
   # different namespace than mage-search).
-  OPENSEARCH_HOST: opensearch.mage-search.svc.cluster.local
+  OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
   OPENSEARCH_PORT: "9200"
 
 # ── Shared volumes ────────────────────────────────────────────────────────────

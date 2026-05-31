@@ -38,7 +38,7 @@ spec:
               python /scripts/opensearch_setup.py
           env:
             - name: OPENSEARCH_HOST
-              value: "opensearch.mage-search.svc.cluster.local"
+              value: "opensearch-cluster-master.mage-search.svc.cluster.local"
             - name: OPENSEARCH_PORT
               value: "9200"
           volumeMounts:

@@ -5,19 +5,21 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `values-log-search.yaml` | Helm values override — adds Fluent Bit sidecar and OpenSearch env vars to the Mage deployment |
-| `mage-data-pvc.yaml` | PersistentVolumeClaim for Mage log data (shared by mageai container + Fluent Bit sidecar) |
-| `opensearch-setup-job.yaml` | One-time Job that creates the `mage_logs` index in OpenSearch |
+
+| File                        | Purpose                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `values-log-search.yaml`    | Helm values override — adds Fluent Bit sidecar and OpenSearch env vars to the Mage deployment |
+| `mage-data-pvc.yaml`        | PersistentVolumeClaim for Mage log data (shared by mageai container + Fluent Bit sidecar)     |
+| `opensearch-setup-job.yaml` | One-time Job that creates the `mage_logs` index in OpenSearch                                 |
+
 
 ## Quick-start
 
-> **Full step-by-step instructions** are in `docs/design/log-search.md` (Section 14.2) in the `mage-pro` repo.
+> **Full step-by-step instructions** are in `docs/design/log-search.md` (Section 14.3) in the `mage-pro` repo.
 
 ```bash
-MAGE_PRO=~/mage-pro          # path to the mage-pro repo
-HELM_CHART=~/helm-charts      # path to this repo
+MAGE_PRO={path-to-mage-pro}          # path to the mage-pro repo
+HELM_CHART={path-to-helm-charts}     # path to this repo
 
 # 1. Deploy OpenSearch
 helm repo add opensearch https://opensearch-project.github.io/helm-charts
