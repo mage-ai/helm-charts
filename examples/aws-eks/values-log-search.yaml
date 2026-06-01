@@ -28,6 +28,9 @@ config:
   # different namespace than mage-search).
   OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
   OPENSEARCH_PORT: "9200"
+  # Enable OpenSearch as the primary log-loading source (Phase A).
+  # Without this flag LogResource falls back to reading from disk.
+  USE_OPENSEARCH_FOR_LOGS: "true"
 
 # ── Shared volumes ────────────────────────────────────────────────────────────
 extraVolumes:
