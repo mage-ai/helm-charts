@@ -13,17 +13,19 @@
 #     --reuse-values
 #
 # Prerequisites (apply before helm install/upgrade):
-#   kubectl apply -f examples/aws-eks/mage-data-pvc.yaml
 #   # Use fluent-bit-prod.conf (not fluent-bit.conf) — it has the K8s service DNS host.
 #   kubectl -n mage create configmap fluent-bit-config \
 #     --from-file=fluent-bit.conf=<path-to-mage-pro>/fluent-bit-prod.conf
 #   kubectl -n mage create configmap fluent-bit-parsers \
 #     --from-file=parsers.conf=<path-to-mage-pro>/fluent-bit-parsers.conf
+#
+# PVC: only pvc-mageai-staging is needed (mounted at /home/src).
+# No separate mage-data PVC required — log data lives under /home/src/mage_data.
 
 # ── Environment variables injected into the mageai container ─────────────────
 config:
-  # Tell Mage where to write log data; must match the PVC mount path below.
-  MAGE_DATA_DIR: /home/mage_data
+  # Log data lives under /home/src (the pvc-mageai-staging mount).
+  MAGE_DATA_DIR: /home/src/mage_data
   # In-cluster OpenSearch service DNS (adjust namespace if opensearch is in a
   # different namespace than mage-search).
   OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
@@ -36,10 +38,7 @@ config:
 extraVolumes:
   - name: mage-fs
     persistentVolumeClaim:
-      claimName: mage-fs          # project code PVC (already exists)
-  - name: mage-data
-    persistentVolumeClaim:
-      claimName: mage-data        # log data PVC — see mage-data-pvc.yaml
+      claimName: pvc-mageai-staging   # single PVC — covers both src and mage_data
   - name: fluent-bit-config
     configMap:
       name: fluent-bit-config
@@ -53,8 +52,7 @@ extraVolumes:
 extraVolumeMounts:
   - name: mage-fs
     mountPath: /home/src
-  - name: mage-data
-    mountPath: /home/mage_data
+    subPath: mage_pro/mageai-staging-test
 
 # ── Fluent Bit sidecar — reads log files and ships them to OpenSearch ─────────
 extraContainers:
@@ -67,8 +65,9 @@ extraContainers:
       - -c
       - /fluent-bit/etc/fluent-bit.conf
     volumeMounts:
-      - name: mage-data
-        mountPath: /home/mage_data
+      - name: mage-fs
+        mountPath: /home/src
+        subPath: mage_pro/mageai-staging-test
         readOnly: true
       - name: fluent-bit-config
         mountPath: /fluent-bit/etc/fluent-bit.conf
