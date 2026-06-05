@@ -24,9 +24,10 @@ HELM_CHART={path-to-helm-charts}     # path to this repo
 # 1. Deploy OpenSearch
 helm repo add opensearch https://opensearch-project.github.io/helm-charts
 helm install opensearch opensearch/opensearch \
-  --namespace mage-search --create-namespace \
-  --set replicas=1 --set singleNode=true \
-  --set "config.opensearch\.yml=plugins.security.disabled: true"
+  --namespace mage-search \
+  --values ~/mage/opensearch-values.yaml \
+  --set persistence.size=30Gi \
+  --set persistence.storageClass=gp2    # or gp3 — from kubectl get storageclass above
 
 # 2. Create the log data PVC
 kubectl apply -f $HELM_CHART/examples/aws-eks/mage-data-pvc.yaml
