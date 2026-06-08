@@ -15,7 +15,7 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 
 ## Quick-start
 
-> **Full step-by-step instructions** are in `docs/design/log-search.md` (Section 14.3) in the `mage-pro` repo.
+> **Full step-by-step instructions** are in Log Search Tech Design [https://docs.google.com/document/d/1smez-Xkm1HIIu1IvMTDRBUq_8Pwrx7qKAlQD0q49OjU/edit?usp=sharing](https://docs.google.com/document/d/1smez-Xkm1HIIu1IvMTDRBUq_8Pwrx7qKAlQD0q49OjU/edit?usp=sharing) (Section 14.3 Production Deployment (AWS EKS / Kubernetes))
 
 ```bash
 MAGE_PRO={path-to-mage-pro}          # path to the mage-pro repo
