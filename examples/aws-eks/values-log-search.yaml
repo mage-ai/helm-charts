@@ -1,86 +1,29 @@
 # values-log-search.yaml
-# Helm values override that adds OpenSearch-backed log search (deep search)
-# to a Mage Pro deployment on AWS EKS.
+# Generic Helm values base — OpenSearch-backed log search on AWS EKS.
 #
-# Usage:
-#   helm install mageai ~/helm-charts/charts/mageai \
-#     --namespace mage \
-#     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml
+# This file contains only environment-agnostic config (env vars).
+# Use alongside an environment-specific overlay that defines extraVolumes,
+# extraVolumeMounts, and extraContainers for your cluster's PVC and subPath:
 #
 #   helm upgrade mageai ~/helm-charts/charts/mageai \
 #     --namespace mage \
 #     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml \
+#     --values ~/helm-charts/examples/aws-eks/values-log-search-staging.yaml \
 #     --reuse-values
 #
 # Prerequisites (apply before helm install/upgrade):
-#   # Use fluent-bit-prod.conf (not fluent-bit.conf) — it has the K8s service DNS host.
 #   kubectl -n mage create configmap fluent-bit-config \
 #     --from-file=fluent-bit.conf=<path-to-mage-pro>/fluent-bit-prod.conf
 #   kubectl -n mage create configmap fluent-bit-parsers \
 #     --from-file=parsers.conf=<path-to-mage-pro>/fluent-bit-parsers.conf
-#
-# PVC: only pvc-mageai-staging is needed (mounted at /home/src).
-# No separate mage-data PVC required — log data lives under /home/src/mage_data.
 
 # ── Environment variables injected into the mageai container ─────────────────
 config:
-  # Log data lives under /home/src (the pvc-mageai-staging mount).
+  # Log data lives under /home/src (the PVC mount path).
   MAGE_DATA_DIR: /home/src/mage_data
-  # In-cluster OpenSearch service DNS (adjust namespace if opensearch is in a
-  # different namespace than mage-search).
+  # In-cluster OpenSearch service DNS (adjust namespace if needed).
   OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
   OPENSEARCH_PORT: "9200"
-  # Enable OpenSearch as the primary log-loading source (Phase A).
+  # Enable OpenSearch as the primary log-loading source.
   # Without this flag LogResource falls back to reading from disk.
   USE_OPENSEARCH_FOR_LOGS: "true"
-
-# ── Shared volumes ────────────────────────────────────────────────────────────
-extraVolumes:
-  - name: mage-fs
-    persistentVolumeClaim:
-      claimName: pvc-mageai-staging   # single PVC — covers both src and mage_data
-  - name: fluent-bit-config
-    configMap:
-      name: fluent-bit-config
-  - name: fluent-bit-parsers
-    configMap:
-      name: fluent-bit-parsers
-  - name: fluent-bit-state
-    emptyDir: {}                  # replace with a PVC for state persistence across pod restarts
-
-# ── Volume mounts for the main mageai container ───────────────────────────────
-extraVolumeMounts:
-  - name: mage-fs
-    mountPath: /home/src
-    subPath: mage_pro/mageai-staging-test
-
-# ── Fluent Bit sidecar — reads log files and ships them to OpenSearch ─────────
-extraContainers:
-  - name: fluent-bit
-    image: fluent/fluent-bit:latest
-    securityContext:
-      runAsUser: 0                # root required to read log files written by Mage
-    command:
-      - /fluent-bit/bin/fluent-bit
-      - -c
-      - /fluent-bit/etc/fluent-bit.conf
-    volumeMounts:
-      - name: mage-fs
-        mountPath: /home/src
-        subPath: mage_pro/mageai-staging-test
-        readOnly: true
-      - name: fluent-bit-config
-        mountPath: /fluent-bit/etc/fluent-bit.conf
-        subPath: fluent-bit.conf
-      - name: fluent-bit-parsers
-        mountPath: /fluent-bit/etc/parsers.conf
-        subPath: parsers.conf
-      - name: fluent-bit-state
-        mountPath: /var/lib/fluent-bit
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi

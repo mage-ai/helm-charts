@@ -6,11 +6,12 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 ## Files
 
 
-| File                        | Purpose                                                                                       |
-| --------------------------- | --------------------------------------------------------------------------------------------- |
-| `values-log-search.yaml`    | Helm values override — adds Fluent Bit sidecar and OpenSearch env vars to the Mage deployment |
-| `mage-data-pvc.yaml`        | PersistentVolumeClaim for Mage log data (shared by mageai container + Fluent Bit sidecar)     |
-| `opensearch-setup-job.yaml` | One-time Job that creates the `mage_logs` index in OpenSearch                                 |
+| File                                | Purpose                                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| `values-log-search.yaml`            | Generic Helm values base — OpenSearch env vars, shared across all environments             |
+| `values-log-search-staging.yaml`    | Staging overlay — cluster-specific PVC name and subPath for the staging cluster            |
+| `mage-data-pvc.yaml`                | PersistentVolumeClaim for Mage log data (shared by mageai container + Fluent Bit sidecar)  |
+| `opensearch-setup-job.yaml`         | One-time Job that creates the `mage_logs` index in OpenSearch                              |
 
 
 ## Quick-start
@@ -45,15 +46,18 @@ kubectl -n mage create configmap opensearch-setup-script \
 kubectl apply -f $HELM_CHART/examples/aws-eks/opensearch-setup-job.yaml
 
 # 5. Install / upgrade Mage with log search enabled
+#    Pass the base values file first, then the env-specific overlay second.
+#    (second --values file wins on conflicts, e.g. PVC name and subPath)
 helm upgrade --install mageai $HELM_CHART/charts/mageai \
   --namespace mage --create-namespace \
   --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
+  --values $HELM_CHART/examples/aws-eks/values-log-search-staging.yaml \
   --reuse-values
 ```
 
 ## Log file path
 
 Mage writes logs to `$MAGE_DATA_DIR/{repo_name}/pipelines/{pipeline}/.logs/...`.
-The `values-log-search.yaml` sets `MAGE_DATA_DIR=/home/mage_data` and mounts the
-`mage-data` PVC at that path so both the mageai container and the Fluent Bit
-sidecar can access the same log files.
+The base values file sets `MAGE_DATA_DIR=/home/src/mage_data`. The env overlay
+mounts the cluster PVC at `/home/src` so both the mageai container and the
+Fluent Bit sidecar share the same log files via the same PVC.
