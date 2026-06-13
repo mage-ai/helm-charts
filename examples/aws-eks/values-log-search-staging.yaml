@@ -1,61 +1,16 @@
-`# values-log-search-staging.yaml
+# values-log-search-staging.yaml
 # Staging-cluster overlay for values-log-search.yaml.
 # PVC: pvc-mageai-staging (namespace: mage), EFS-backed, 50Gi, RWX.
 #
 # Usage:
-#   helm upgrade mageai ~/helm-charts/charts/mageai \
+#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml
+#   helm upgrade mageai $HELM_CHART/charts/mageai \
 #     --namespace mage \
-#     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml \
-#     --values ~/helm-charts/examples/aws-eks/values-log-search-staging.yaml \
+#     --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
+#     --values $ENV_OVERLAY \
 #     --reuse-values
 
-# ── Shared volumes ────────────────────────────────────────────────────────────
-extraVolumes:
-  - name: mage-fs
-    persistentVolumeClaim:
-      claimName: pvc-mageai-staging
-  - name: fluent-bit-config
-    configMap:
-      name: fluent-bit-config
-  - name: fluent-bit-parsers
-    configMap:
-      name: fluent-bit-parsers
-  - name: fluent-bit-state
-    emptyDir: {}
-
-# ── Volume mounts for the main mageai container ───────────────────────────────
-extraVolumeMounts:
-  - name: mage-fs
-    mountPath: /home/src
+logSearch:
+  persistence:
+    existingClaim: pvc-mageai-staging
     subPath: mage_pro/mageai-staging-test
-
-# ── Fluent Bit sidecar — reads log files and ships them to OpenSearch ─────────
-extraContainers:
-  - name: fluent-bit
-    image: fluent/fluent-bit:latest
-    securityContext:
-      runAsUser: 0                # root required to read log files written by Mage
-    command:
-      - /fluent-bit/bin/fluent-bit
-      - -c
-      - /fluent-bit/etc/fluent-bit.conf
-    volumeMounts:
-      - name: mage-fs
-        mountPath: /home/src
-        subPath: mage_pro/mageai-staging-test
-        readOnly: true
-      - name: fluent-bit-config
-        mountPath: /fluent-bit/etc/fluent-bit.conf
-        subPath: fluent-bit.conf
-      - name: fluent-bit-parsers
-        mountPath: /fluent-bit/etc/parsers.conf
-        subPath: parsers.conf
-      - name: fluent-bit-state
-        mountPath: /var/lib/fluent-bit
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi

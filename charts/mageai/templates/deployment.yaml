@@ -132,6 +132,16 @@ spec:
             - name: K8S_DEFAULT_CONFIG_PATH
               value: /etc/mage/k8s-executor-config.yaml
           {{- end }}
+          {{- if and .Values.logSearch .Values.logSearch.enabled }}
+            - name: MAGE_DATA_DIR
+              value: /home/src/mage_data
+            - name: OPENSEARCH_HOST
+              value: {{ .Values.logSearch.opensearch.host | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: USE_OPENSEARCH_FOR_LOGS
+              value: "true"
+          {{- end }}
           volumeMounts:
           {{- if .Values.volumes }}
             - name: mage-fs
@@ -151,6 +161,42 @@ spec:
               subPath: config.yaml
               readOnly: true
           {{- end }}
+          {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim }}
+            - name: log-search-pvc
+              mountPath: /home/src
+              {{- if .Values.logSearch.persistence.subPath }}
+              subPath: {{ .Values.logSearch.persistence.subPath }}
+              {{- end }}
+          {{- end }}
+        {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.fluentBit.enabled }}
+        - name: fluent-bit
+          image: fluent/fluent-bit:latest
+          securityContext:
+            runAsUser: 0
+          command:
+            - /fluent-bit/bin/fluent-bit
+            - -c
+            - /fluent-bit/etc/fluent-bit.conf
+          volumeMounts:
+            {{- if .Values.logSearch.persistence.existingClaim }}
+            - name: log-search-pvc
+              mountPath: /home/src
+              readOnly: true
+              {{- if .Values.logSearch.persistence.subPath }}
+              subPath: {{ .Values.logSearch.persistence.subPath }}
+              {{- end }}
+            {{- end }}
+            - name: log-search-fluent-bit-config
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: log-search-fluent-bit-parsers
+              mountPath: /fluent-bit/etc/parsers.conf
+              subPath: parsers.conf
+            - name: log-search-fluent-bit-state
+              mountPath: /var/lib/fluent-bit
+          resources:
+            {{- toYaml .Values.logSearch.fluentBit.resources | nindent 12 }}
+        {{- end }}
         {{- if .Values.extraContainers }}
           {{- toYaml .Values.extraContainers | nindent 8 }}
         {{- end }}
@@ -181,5 +227,22 @@ spec:
         - name: k8s-executor-config
           configMap:
             name: {{ include "mageai.fullname" . }}-k8s-executor-config
+      {{- end }}
+      {{- if and .Values.logSearch .Values.logSearch.enabled }}
+        {{- if .Values.logSearch.persistence.existingClaim }}
+        - name: log-search-pvc
+          persistentVolumeClaim:
+            claimName: {{ .Values.logSearch.persistence.existingClaim }}
+        {{- end }}
+        {{- if .Values.logSearch.fluentBit.enabled }}
+        - name: log-search-fluent-bit-config
+          configMap:
+            name: {{ .Values.logSearch.fluentBit.existingConfigMap }}
+        - name: log-search-fluent-bit-parsers
+          configMap:
+            name: {{ .Values.logSearch.fluentBit.existingParsersConfigMap }}
+        - name: log-search-fluent-bit-state
+          emptyDir: {}
+        {{- end }}
       {{- end }}
 {{- end }}

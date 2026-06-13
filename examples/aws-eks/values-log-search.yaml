@@ -1,14 +1,12 @@
 # values-log-search.yaml
-# Generic Helm values base — OpenSearch-backed log search on AWS EKS.
+# Shared Helm values for OpenSearch-backed log search on AWS EKS.
+# Use alongside an environment-specific overlay (staging or prod):
 #
-# This file contains only environment-agnostic config (env vars).
-# Use alongside an environment-specific overlay that defines extraVolumes,
-# extraVolumeMounts, and extraContainers for your cluster's PVC and subPath:
-#
-#   helm upgrade mageai ~/helm-charts/charts/mageai \
+#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml  # or values-log-search-prod.yaml
+#   helm upgrade mageai $HELM_CHART/charts/mageai \
 #     --namespace mage \
-#     --values ~/helm-charts/examples/aws-eks/values-log-search.yaml \
-#     --values ~/helm-charts/examples/aws-eks/values-log-search-staging.yaml \
+#     --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
+#     --values $ENV_OVERLAY \
 #     --reuse-values
 #
 # Prerequisites (apply before helm install/upgrade):
@@ -16,14 +14,22 @@
 #     --from-file=fluent-bit.conf=<path-to-mage-pro>/fluent-bit-prod.conf
 #   kubectl -n mage create configmap fluent-bit-parsers \
 #     --from-file=parsers.conf=<path-to-mage-pro>/fluent-bit-parsers.conf
+#   kubectl -n mage create configmap opensearch-setup-script \
+#     --from-file=opensearch_setup.py=<path-to-mage-pro>/scripts/opensearch_setup.py
 
-# ── Environment variables injected into the mageai container ─────────────────
-config:
-  # Log data lives under /home/src (the PVC mount path).
-  MAGE_DATA_DIR: /home/src/mage_data
-  # In-cluster OpenSearch service DNS (adjust namespace if needed).
-  OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
-  OPENSEARCH_PORT: "9200"
-  # Enable OpenSearch as the primary log-loading source.
-  # Without this flag LogResource falls back to reading from disk.
-  USE_OPENSEARCH_FOR_LOGS: "true"
+logSearch:
+  enabled: true
+  opensearch:
+    host: opensearch-cluster-master.mage-search.svc.cluster.local
+    port: "9200"
+  fluentBit:
+    enabled: true
+    existingConfigMap: fluent-bit-config
+    existingParsersConfigMap: fluent-bit-parsers
+  setupJob:
+    enabled: true
+    existingConfigMap: opensearch-setup-script
+
+# Clear the chart defaults so logSearch.persistence manages /home/src instead.
+extraVolumes: []
+extraVolumeMounts: []

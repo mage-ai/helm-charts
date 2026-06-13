@@ -8,10 +8,10 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 
 | File                                | Purpose                                                                                    |
 | ----------------------------------- | ------------------------------------------------------------------------------------------ |
-| `values-log-search.yaml`            | Generic Helm values base — OpenSearch env vars, shared across all environments             |
-| `values-log-search-staging.yaml`    | Staging overlay — cluster-specific PVC name and subPath for the staging cluster            |
-| `mage-data-pvc.yaml`                | PersistentVolumeClaim for Mage log data (shared by mageai container + Fluent Bit sidecar)  |
-| `opensearch-setup-job.yaml`         | One-time Job that creates the `mage_logs` index in OpenSearch                              |
+| `values-log-search.yaml`            | Shared Helm values — enables logSearch feature, sets OpenSearch host/port                  |
+| `values-log-search-staging.yaml`    | Staging overlay — cluster-specific PVC name and subPath                                    |
+| `opensearch-values.yaml`            | Values for the OpenSearch Helm chart (separate release in mage-search namespace)           |
+| `mage-data-pvc.yaml`                | Reference PVC manifest (skip if reusing an existing PVC)                                   |
 
 
 ## Quick-start
@@ -21,16 +21,19 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 ```bash
 MAGE_PRO={path-to-mage-pro}          # path to the mage-pro repo
 HELM_CHART={path-to-helm-charts}     # path to this repo
+ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml   # or values-log-search-prod.yaml
 
 # 1. Deploy OpenSearch
 helm repo add opensearch https://opensearch-project.github.io/helm-charts
 helm install opensearch opensearch/opensearch \
-  --namespace mage-search \
-  --values ~/mage/opensearch-values.yaml \
+  --namespace mage-search --create-namespace \
+  --values $HELM_CHART/examples/aws-eks/opensearch-values.yaml \
   --set persistence.size=30Gi \
-  --set persistence.storageClass=gp2    # or gp3 — from kubectl get storageclass above
+  --set persistence.storageClass=gp2 \
+  --set "extraEnvs[0].value=<your-opensearch-admin-password>"
 
-# 2. Create the log data PVC
+# 2. Create the log data PVC (skip if reusing an existing PVC)
+#    Edit mage-data-pvc.yaml to set the correct storageClass and size first.
 kubectl apply -f $HELM_CHART/examples/aws-eks/mage-data-pvc.yaml
 
 # 3. Create Fluent Bit ConfigMaps from the mage-pro repo
@@ -40,18 +43,18 @@ kubectl -n mage create configmap fluent-bit-config \
 kubectl -n mage create configmap fluent-bit-parsers \
   --from-file=parsers.conf=$MAGE_PRO/fluent-bit-parsers.conf
 
-# 4. Create the mage_logs index
+# 4. Create the opensearch-setup-script ConfigMap
+#    The chart renders a post-install Job from this when logSearch.setupJob.enabled=true.
 kubectl -n mage create configmap opensearch-setup-script \
   --from-file=opensearch_setup.py=$MAGE_PRO/scripts/opensearch_setup.py
-kubectl apply -f $HELM_CHART/examples/aws-eks/opensearch-setup-job.yaml
 
 # 5. Install / upgrade Mage with log search enabled
-#    Pass the base values file first, then the env-specific overlay second.
-#    (second --values file wins on conflicts, e.g. PVC name and subPath)
+#    Pass the shared values file first, then the env-specific overlay ($ENV_OVERLAY).
+#    (second --values file wins on conflicts — sets PVC name and subPath)
 helm upgrade --install mageai $HELM_CHART/charts/mageai \
   --namespace mage --create-namespace \
   --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
-  --values $HELM_CHART/examples/aws-eks/values-log-search-staging.yaml \
+  --values $ENV_OVERLAY \
   --reuse-values
 ```
 

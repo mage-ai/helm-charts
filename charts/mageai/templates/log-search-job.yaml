@@ -1,0 +1,39 @@
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.setupJob .Values.logSearch.setupJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mageai.fullname" . }}-log-search-setup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: python:3.11-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install opensearch-py -q
+              python /scripts/opensearch_setup.py
+          env:
+            - name: OPENSEARCH_HOST
+              value: {{ .Values.logSearch.opensearch.host | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+          volumeMounts:
+            - name: setup-script
+              mountPath: /scripts
+      volumes:
+        - name: setup-script
+          configMap:
+            name: {{ .Values.logSearch.setupJob.existingConfigMap }}
+{{- end }}
