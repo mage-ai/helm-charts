@@ -30,6 +30,7 @@ logSearch:
     enabled: true
     existingConfigMap: opensearch-setup-script
 
-# Clear the chart defaults so logSearch.persistence manages /home/src instead.
+# Clear chart defaults — logSearch.* now manages volumes, mounts, and the sidecar.
 extraVolumes: []
 extraVolumeMounts: []
+extraContainers: []
