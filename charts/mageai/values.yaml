@@ -359,9 +359,8 @@ k8sExecutorConfig:
 # Log search (OpenSearch + Fluent Bit)
 # ------------------------------------------------------------------------------
 
-# When enabled, renders OPENSEARCH_* env vars and MAGE_DATA_DIR into the Mage
-# container, adds a Fluent Bit sidecar, and optionally creates an OpenSearch
-# index setup Job.
+# When enabled, renders OPENSEARCH_* env vars into the Mage container, adds a
+# Fluent Bit sidecar, and optionally creates an OpenSearch index setup Job.
 logSearch:
   enabled: false
 

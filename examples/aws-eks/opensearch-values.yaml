@@ -42,7 +42,7 @@ config:
     # When this is true (disabled), OpenSearch accepts unauthenticated requests —
     # fine for local quick-start but not representative of production.
     # Changing this flag on an existing deployment requires a helm upgrade of the
-    # OpenSearch release (see deployment-instructions.md step 2).
+    # OpenSearch release (see log-search-deployment.md step 2).
     plugins.security.disabled: false
 
 # ── Persistence ───────────────────────────────────────────────────────────────

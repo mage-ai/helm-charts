@@ -1,7 +1,8 @@
-# Deploying Mage Pro with Log Search (Staging or Production)
+# Log Search Deployment on AWS EKS (OpenSearch + Fluent Bit)
 
-Step-by-step instructions to deploy Mage Pro on an AWS EKS cluster using the
-chart-native `logSearch.*` feature.
+Step-by-step guide for adding OpenSearch-backed log search to an existing Mage Pro
+EKS deployment using the chart-native `logSearch.*` values. This is not a general
+Mage deployment guide — it covers only the log search feature.
 
 > **Full step-by-step instructions** are also in the Log Search Tech Design doc
 > (Section 14.3 Production Deployment).

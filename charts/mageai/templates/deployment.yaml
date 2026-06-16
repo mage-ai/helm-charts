@@ -133,8 +133,6 @@ spec:
               value: /etc/mage/k8s-executor-config.yaml
           {{- end }}
           {{- if and .Values.logSearch .Values.logSearch.enabled }}
-            - name: MAGE_DATA_DIR
-              value: /home/src/mage_data
             - name: OPENSEARCH_HOST
               value: {{ .Values.logSearch.opensearch.host | quote }}
             - name: OPENSEARCH_PORT
@@ -157,11 +155,13 @@ spec:
             {{- end }}
           {{- end }}
           volumeMounts:
+          {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
           {{- if .Values.volumes }}
             - name: mage-fs
               mountPath: /home/src
           {{- else if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
             - name: workspace-config
@@ -250,10 +250,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
       {{- if .Values.volumes }}
         {{- toYaml .Values.volumes | nindent 8 }}
-      {{- else if .Values.extraVolumes -}}
-        {{ toYaml .Values.extraVolumes | nindent 8 }}
+      {{- else if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+      {{- end }}
       {{- end }}
       {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
         - name: workspace-config
