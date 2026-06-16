@@ -14,9 +14,9 @@ to deploy the Mage Pro **log search** feature (OpenSearch + Fluent Bit) on AWS E
 | `mage-data-pvc.yaml`                | Reference PVC manifest (skip if reusing an existing PVC)                                   |
 
 
-## Quick-start
+## Deployment Instructions
 
-See [deployment-staging-or-prod.md](../../deployment-staging-or-prod.md) for full
+See [deployment-instructions.md](deployment-instructions.md) for full
 step-by-step deployment instructions covering both staging and production.
 
 ## Log file path

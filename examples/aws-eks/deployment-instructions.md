@@ -42,6 +42,27 @@ helm install opensearch opensearch/opensearch \
   --set "extraEnvs[0].value=<your-opensearch-admin-password>"
 ```
 
+> **Changing `plugins.security.disabled`**: `opensearch-values.yaml` ships with
+> `plugins.security.disabled: false` (security enabled) to simulate production auth.
+> If you previously ran OpenSearch with this set to `true`, simply restarting the pod
+> is not enough — you must upgrade the OpenSearch Helm release for the config change
+> to take effect:
+>
+> ```bash
+> helm upgrade opensearch opensearch/opensearch \
+>   --namespace mage-search \
+>   --values $HELM_CHART/examples/aws-eks/opensearch-values.yaml \
+>   --set persistence.size=30Gi \
+>   --set persistence.storageClass=gp2 \
+>   --set "extraEnvs[0].value=<your-opensearch-admin-password>" \
+>   --reuse-values
+> ```
+>
+> After the upgrade, OpenSearch will require username/password authentication. Ensure
+> the `opensearch-auth` Secret (step 5) exists **before** running the Mage `helm upgrade`
+> (step 7) — otherwise the Mage pod will fail to start because `secretKeyRef` cannot
+> be resolved.
+
 ### 3. Create the log data PVC (skip if reusing an existing PVC)
 
 Edit `mage-data-pvc.yaml` to set the correct `storageClass` and `size` first, then:
@@ -56,7 +77,27 @@ kubectl apply -f $HELM_CHART/examples/aws-eks/mage-data-pvc.yaml
 helm dependency build $HELM_CHART/charts/mageai
 ```
 
-### 5. Create prerequisite ConfigMaps (skip each if it already exists)
+### 5. Create the OpenSearch auth Secret (production or auth simulation in staging)
+
+Skip this step if `logSearch.opensearch.auth.enabled` is `false` in your overlay.
+
+```bash
+kubectl -n mage create secret generic opensearch-auth \
+  --from-literal=OPENSEARCH_USERNAME=<username> \
+  --from-literal=OPENSEARCH_PASSWORD=<password>
+```
+
+Then set in your env overlay (`values-log-search-staging.yaml` or `values-log-search-prod.yaml`):
+
+```yaml
+logSearch:
+  opensearch:
+    auth:
+      enabled: true
+      existingSecret: opensearch-auth
+```
+
+### 6. Create prerequisite ConfigMaps (skip each if it already exists)
 
 ```bash
 # Check what already exists
@@ -75,7 +116,7 @@ kubectl -n mage create configmap opensearch-setup-script \
   --from-file=opensearch_setup.py=$MAGE_PRO/scripts/opensearch_setup.py
 ```
 
-### 6. Run helm upgrade
+### 7. Run helm upgrade
 
 ```bash
 helm upgrade --install mageai $HELM_CHART/charts/mageai \
@@ -95,7 +136,7 @@ service type, replica count). Without it, any value not explicitly provided woul
 fall back to the chart's defaults, which could inadvertently reset settings that
 were previously customized.
 
-### 7. Verify the rollout
+### 8. Verify the rollout
 
 ```bash
 # Watch pod status — expect mageai pod to restart with 2 containers (mageai + fluent-bit)

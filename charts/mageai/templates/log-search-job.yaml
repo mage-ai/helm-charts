@@ -29,11 +29,39 @@ spec:
               value: {{ .Values.logSearch.opensearch.host | quote }}
             - name: OPENSEARCH_PORT
               value: {{ .Values.logSearch.opensearch.port | quote }}
+            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_USERNAME
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_PASSWORD
+            {{- end }}
+            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}
+            - name: OPENSEARCH_USE_SSL
+              value: "true"
+            - name: OPENSEARCH_VERIFY_CERTS
+              value: {{ .Values.logSearch.opensearch.tls.verify | quote }}
+            {{- end }}
           volumeMounts:
             - name: setup-script
               mountPath: /scripts
+            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+            - name: log-search-opensearch-ca
+              mountPath: /etc/ssl/opensearch
+              readOnly: true
+            {{- end }}
       volumes:
         - name: setup-script
           configMap:
             name: {{ .Values.logSearch.setupJob.existingConfigMap }}
+        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+        - name: log-search-opensearch-ca
+          secret:
+            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
+        {{- end }}
 {{- end }}

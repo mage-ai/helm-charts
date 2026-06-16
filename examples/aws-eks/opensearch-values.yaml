@@ -38,9 +38,12 @@ config:
   opensearch.yml: |
     cluster.name: mage-logs
     network.host: 0.0.0.0
-    # Security is disabled for internal cluster use.
-    # Production: remove this line and configure TLS + authentication.
-    plugins.security.disabled: true
+    # Security plugin is enabled (false = not disabled) to simulate production auth.
+    # When this is true (disabled), OpenSearch accepts unauthenticated requests —
+    # fine for local quick-start but not representative of production.
+    # Changing this flag on an existing deployment requires a helm upgrade of the
+    # OpenSearch release (see deployment-instructions.md step 2).
+    plugins.security.disabled: false
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 # Size and storageClass are overridden at deploy time via --set.

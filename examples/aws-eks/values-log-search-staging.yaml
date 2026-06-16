@@ -14,3 +14,7 @@ logSearch:
   persistence:
     existingClaim: pvc-mageai-staging
     subPath: mage_pro/mageai-staging-test
+  opensearch:
+    auth:
+      enabled: true
+      existingSecret: opensearch-auth

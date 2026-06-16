@@ -369,6 +369,18 @@ logSearch:
     host: ""
     port: "9200"
     index: mage_logs
+    # Authentication — credentials stored in a Kubernetes Secret.
+    # Secret must contain keys: OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD.
+    auth:
+      enabled: false
+      existingSecret: ""
+    # TLS — for encrypted connections to OpenSearch.
+    # Secret must contain key: ca.crt (CA certificate).
+    # Production: enable auth and tls together; keep both disabled for staging quick-start.
+    tls:
+      enabled: false
+      existingSecret: ""
+      verify: true    # set false to skip hostname verification (not recommended)
 
   # Existing PVC in the mage namespace that both the mageai container and the
   # Fluent Bit sidecar will mount at /home/src.
