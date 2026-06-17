@@ -172,3 +172,87 @@ kubectl -n mage-search exec -it <opensearch-pod-name> -- curl -s localhost:9200/
   run, set `logSearch.setupJob.enabled: false` in your env overlay.
 - For a new production cluster, create `examples/aws-eks/values-log-search-prod.yaml`
   with the production PVC name and subPath before running step 6.
+
+---
+
+## Authentication and TLS
+
+### Traffic paths
+
+There are three distinct traffic paths to consider:
+
+| Path | Description | TLS controlled by |
+|------|-------------|-------------------|
+| **Mage → OpenSearch** | Mage reads/writes log data and queries the index | `logSearch.opensearch.tls` in chart values |
+| **Fluent Bit → OpenSearch** | Fluent Bit sidecar ships log files to OpenSearch | `tls` settings in `fluent-bit.conf` ConfigMap OUTPUT section |
+| **External client → OpenSearch** | Developer or dashboard tool querying OpenSearch directly | Not applicable — OpenSearch is a `ClusterIP` service, not reachable from outside the cluster |
+
+Fluent Bit does not accept inbound connections in this setup — it reads log files from the shared PVC and sends them outbound to OpenSearch only. There is no "client → Fluent Bit" traffic path.
+
+---
+
+### Staging (current setup)
+
+Authentication is enabled, TLS is disabled. Traffic between Mage, Fluent Bit, and OpenSearch stays inside the Kubernetes cluster (pod-to-pod over the cluster network) and never crosses a public network, so encrypting it is not required.
+
+**`opensearch-values.yaml`** — security plugin enabled, TLS off:
+```yaml
+config:
+  opensearch.yml: |
+    plugins.security.disabled: false   # auth enforced
+    # TLS not configured — in-cluster traffic only
+```
+
+**`values-log-search-staging.yaml`** — auth enabled, TLS off:
+```yaml
+logSearch:
+  opensearch:
+    auth:
+      enabled: true
+      existingSecret: opensearch-auth   # contains OPENSEARCH_USERNAME / OPENSEARCH_PASSWORD
+    tls:
+      enabled: false
+```
+
+---
+
+### Production (recommended setup)
+
+Both authentication and TLS should be enabled. TLS encrypts traffic between Mage/Fluent Bit and OpenSearch, which is important when the cluster network is shared or when compliance requires encryption in transit.
+
+**Step 1 — Store the CA certificate in a Secret:**
+```bash
+kubectl -n mage create secret generic opensearch-tls-ca \
+  --from-file=ca.crt=<path-to-ca.crt>
+```
+
+**Step 2 — Enable TLS in `opensearch-values.yaml`** by configuring `plugins.security.ssl.*`
+(see OpenSearch documentation for certificate generation and `opensearch.yml` TLS settings).
+
+**Step 3 — Enable in your production env overlay (`values-log-search-prod.yaml`):**
+```yaml
+logSearch:
+  opensearch:
+    auth:
+      enabled: true
+      existingSecret: opensearch-auth
+    tls:
+      enabled: true
+      existingSecret: opensearch-tls-ca   # Secret containing ca.crt
+      verify: true
+```
+
+The chart automatically mounts the CA cert into both the Mage container and the Fluent Bit sidecar at `/etc/ssl/opensearch` when `tls.enabled: true` — no extra volume configuration needed.
+
+**Step 4 — Update `fluent-bit.conf`** to enable TLS in the OUTPUT section:
+```ini
+[OUTPUT]
+    Name        opensearch
+    tls         On
+    tls.verify  On
+    tls.ca_file /etc/ssl/opensearch/ca.crt
+```
+
+> Note: the chart mounts the CA cert into Fluent Bit automatically, but `fluent-bit.conf`
+> must also have TLS enabled in the OUTPUT section to use it. Enabling
+> `logSearch.opensearch.tls` in chart values alone is not sufficient for Fluent Bit.
