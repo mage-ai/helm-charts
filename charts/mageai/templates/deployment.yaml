@@ -141,6 +141,8 @@ spec:
               value: "true"
             - name: OPENSEARCH_HTTP_SCHEME
               value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"https"{{ else }}"http"{{ end }}
+            - name: OPENSEARCH_LOG_INDEX
+              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
             {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
             - name: OPENSEARCH_USERNAME
               valueFrom:
@@ -201,6 +203,8 @@ spec:
               value: {{ include "mageai.opensearchHost" . | quote }}
             - name: OPENSEARCH_PORT
               value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: OPENSEARCH_LOG_INDEX
+              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
             - name: OPENSEARCH_TLS
               value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"On"{{ else }}"Off"{{ end }}
             - name: OPENSEARCH_VERIFY_CERTS
