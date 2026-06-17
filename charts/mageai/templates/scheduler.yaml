@@ -166,8 +166,16 @@ spec:
             - /fluent-bit/bin/fluent-bit
             - -c
             - /fluent-bit/etc/fluent-bit.conf
-          {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
           env:
+            - name: OPENSEARCH_HOST
+              value: {{ include "mageai.opensearchHost" . | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: OPENSEARCH_TLS
+              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"On"{{ else }}"Off"{{ end }}
+            - name: OPENSEARCH_VERIFY_CERTS
+              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.verify }}"On"{{ else }}"Off"{{ end }}
+            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
             - name: OPENSEARCH_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -178,7 +186,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
                   key: OPENSEARCH_PASSWORD
-          {{- end }}
+            {{- end }}
           volumeMounts:
             {{- if .Values.logSearch.persistence.existingClaim }}
             - name: log-search-pvc
