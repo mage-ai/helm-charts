@@ -11,10 +11,13 @@
 #     --reuse-values
 
 logSearch:
-  persistence:
-    existingClaim: pvc-mageai-staging
-    subPath: mage_pro/mageai-staging-test
   opensearch:
+    # External OpenSearch installed in the mage-search namespace.
+    # Not needed when opensearch.enabled=true (bundled mode).
+    host: opensearch-cluster-master.mage-search.svc.cluster.local
     auth:
       enabled: true
       existingSecret: opensearch-auth
+  persistence:
+    existingClaim: pvc-mageai-staging
+    subPath: mage_pro/mageai-staging-test

@@ -12,13 +12,7 @@
 #     to point at the independently managed OpenSearch endpoint.
 #     helm install opensearch opensearch/opensearch --values opensearch-values.yaml ...
 #
-# Usage:
-#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml  # or -prod.yaml
-#   helm upgrade mageai $HELM_CHART/charts/mageai \
-#     --namespace mage \
-#     --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
-#     --values $ENV_OVERLAY \
-#     --reuse-values
+# See log-search-deployment.md for the full helm upgrade command and deployment steps.
 #
 # Prerequisites (apply before helm install/upgrade):
 #   kubectl -n mage create configmap fluent-bit-config \
@@ -31,8 +25,9 @@
 logSearch:
   enabled: true
   opensearch:
-    # host is auto-derived when opensearch.enabled=true (bundled mode).
-    # Set explicitly when using an external OpenSearch cluster.
+    # Bundled mode  (opensearch.enabled=true):  host is auto-derived, leave empty.
+    # External mode (opensearch.enabled=false): set host in your env overlay
+    #   (e.g. values-log-search-staging.yaml) to the OpenSearch service DNS.
     host: ""
     port: "9200"
   fluentBit:
