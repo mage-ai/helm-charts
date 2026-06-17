@@ -104,7 +104,7 @@ spec:
           {{- end }}
           {{- if and .Values.logSearch .Values.logSearch.enabled }}
             - name: OPENSEARCH_HOST
-              value: {{ .Values.logSearch.opensearch.host | quote }}
+              value: {{ include "mageai.opensearchHost" . | quote }}
             - name: OPENSEARCH_PORT
               value: {{ .Values.logSearch.opensearch.port | quote }}
             - name: USE_OPENSEARCH_FOR_LOGS

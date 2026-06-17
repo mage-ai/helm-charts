@@ -79,6 +79,20 @@ Generate chart secret name
 {{- end -}}
 
 {{/*
+Resolve the OpenSearch host.
+When opensearch.enabled=true and logSearch.opensearch.host is not explicitly set,
+derive the in-cluster service name from the bundled sub-chart.
+Otherwise use logSearch.opensearch.host as-is.
+*/}}
+{{- define "mageai.opensearchHost" -}}
+{{- if and .Values.opensearch .Values.opensearch.enabled (eq "" .Values.logSearch.opensearch.host) -}}
+{{- default "opensearch-cluster-master" .Values.opensearch.masterService -}}
+{{- else -}}
+{{- .Values.logSearch.opensearch.host -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Base path
 */}}
 {{- define "mageai.basePath" -}}

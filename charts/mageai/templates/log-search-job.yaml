@@ -26,7 +26,7 @@ spec:
               python /scripts/opensearch_setup.py
           env:
             - name: OPENSEARCH_HOST
-              value: {{ .Values.logSearch.opensearch.host | quote }}
+              value: {{ include "mageai.opensearchHost" . | quote }}
             - name: OPENSEARCH_PORT
               value: {{ .Values.logSearch.opensearch.port | quote }}
             {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}

@@ -1,8 +1,19 @@
 # values-log-search.yaml
 # Shared Helm values for OpenSearch-backed log search on AWS EKS.
-# Use alongside an environment-specific overlay (staging or prod):
 #
-#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml  # or values-log-search-prod.yaml
+# Two deployment modes:
+#
+#   Bundled (quick-start / staging):
+#     Add --set opensearch.enabled=true to the helm upgrade command.
+#     OpenSearch is installed in the same release; no logSearch.opensearch.host needed.
+#
+#   External (production / managed cluster):
+#     Leave opensearch.enabled=false (default) and set logSearch.opensearch.host
+#     to point at the independently managed OpenSearch endpoint.
+#     helm install opensearch opensearch/opensearch --values opensearch-values.yaml ...
+#
+# Usage:
+#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml  # or -prod.yaml
 #   helm upgrade mageai $HELM_CHART/charts/mageai \
 #     --namespace mage \
 #     --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
@@ -20,7 +31,9 @@
 logSearch:
   enabled: true
   opensearch:
-    host: opensearch-cluster-master.mage-search.svc.cluster.local
+    # host is auto-derived when opensearch.enabled=true (bundled mode).
+    # Set explicitly when using an external OpenSearch cluster.
+    host: ""
     port: "9200"
   fluentBit:
     enabled: true

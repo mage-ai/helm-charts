@@ -70,6 +70,36 @@ postgresql:
     tag: 16.3.0-debian-12-r19
     pullPolicy: IfNotPresent
 
+# OpenSearch for log search — optional bundled deployment.
+# opensearch.enabled=true : installs OpenSearch together with the Mage chart
+#                           (quick-start / staging). Host is auto-derived.
+# opensearch.enabled=false: use an external / managed OpenSearch cluster and
+#                           set logSearch.opensearch.host explicitly.
+opensearch:
+  enabled: false
+  singleNode: true
+  replicas: 1
+  opensearchJavaOpts: "-Xms512m -Xmx512m"
+  # REQUIRED: override at deploy time with a strong password.
+  # --set opensearch.extraEnvs[0].value=<your-password>
+  # Do not commit a real password here.
+  extraEnvs:
+    - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      value: ""
+  config:
+    opensearch.yml: |
+      cluster.name: mage-logs
+      network.host: 0.0.0.0
+      plugins.security.disabled: false
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1536Mi
+  persistence:
+    size: 10Gi
+
 # Redis for distributed locking and caching (required for multiple replicas)
 redis:
   enabled: false
