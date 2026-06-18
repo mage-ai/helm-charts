@@ -38,12 +38,31 @@ config:
   opensearch.yml: |
     cluster.name: mage-logs
     network.host: 0.0.0.0
-    # Security plugin is enabled (false = not disabled) to simulate production auth.
-    # When this is true (disabled), OpenSearch accepts unauthenticated requests —
-    # fine for local quick-start but not representative of production.
-    # Changing this flag on an existing deployment requires a helm upgrade of the
-    # OpenSearch release (see log-search-deployment.md step 2).
+    # Security plugin enabled — requires TLS to be configured (see secretMounts and
+    # ssl settings below). Provision certs first (see log-search-deployment.md
+    # Authentication and TLS section) before deploying with this setting.
     plugins.security.disabled: false
+    plugins.security.ssl.transport.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.transport.pemkey_filepath: certs/tls.key
+    plugins.security.ssl.transport.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.ssl.transport.enforce_hostname_verification: false
+    plugins.security.ssl.http.enabled: true
+    plugins.security.ssl.http.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.http.pemkey_filepath: certs/tls.key
+    plugins.security.ssl.http.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.allow_default_init_securityindex: true
+
+# ── TLS certificates ──────────────────────────────────────────────────────────
+# Mount the opensearch-tls Secret (containing tls.crt, tls.key, ca.crt) into
+# the OpenSearch pod. Create this Secret before helm install/upgrade:
+#   kubectl -n mage-search create secret generic opensearch-tls \
+#     --from-file=tls.crt=node.pem \
+#     --from-file=tls.key=node-key.pem \
+#     --from-file=ca.crt=ca.pem
+secretMounts:
+  - name: opensearch-tls
+    secretName: opensearch-tls
+    path: /usr/share/opensearch/config/certs
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 # Size and storageClass are overridden at deploy time via --set.

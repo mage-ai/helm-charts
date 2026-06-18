@@ -158,6 +158,54 @@ kubectl -n mage-search exec -it <opensearch-pod-name> -- curl -s localhost:9200/
 
 ---
 
+## Full deployment verification
+
+Run these commands at any time to confirm all required resources are in place and healthy.
+
+### Secrets and ConfigMaps
+
+```bash
+# mage namespace — auth secret, TLS CA, and config
+kubectl -n mage get secret opensearch-auth opensearch-tls-ca
+kubectl -n mage get configmap fluent-bit-config fluent-bit-parsers opensearch-setup-script
+
+# mage-search namespace — TLS cert/key for the OpenSearch pod
+kubectl -n mage-search get secret opensearch-tls
+```
+
+Expected output: all resources listed with an `AGE` — no "not found" errors.
+
+### Pod health
+
+```bash
+# Mage pod — READY should show 2/2 (mageai + fluent-bit sidecar)
+kubectl -n mage get pods -l app.kubernetes.io/name=mageai
+
+# OpenSearch pod — READY should show 1/1
+kubectl -n mage-search get pods
+```
+
+### OpenSearch index and document count
+
+```bash
+kubectl -n mage-search exec -it opensearch-cluster-master-0 -- \
+  /bin/bash -c "curl -sk -u 'admin:<password>' https://localhost:9200/_cat/indices/mage_logs?v"
+```
+
+Look for the `mage_logs` index with a non-zero and growing `docs.count`.
+
+### Fluent Bit log shipping
+
+```bash
+kubectl -n mage logs -l app.kubernetes.io/name=mageai -c fluent-bit --tail=20
+```
+
+Healthy output shows `flush chunk ... succeeded` lines. Errors like `error scanning path`
+or `connection refused` indicate a path or connectivity issue — see the Troubleshooting
+section for fixes.
+
+---
+
 ## Notes
 
 - The Fluent Bit sidecar and all volumes are rendered directly by the chart from
@@ -193,25 +241,39 @@ Fluent Bit does not accept inbound connections in this setup — it reads log fi
 
 ### Staging (current setup)
 
-Authentication is enabled, TLS is disabled. Traffic between Mage, Fluent Bit, and OpenSearch stays inside the Kubernetes cluster (pod-to-pod over the cluster network) and never crosses a public network, so encrypting it is not required.
+Authentication and TLS are both enabled using self-signed certificates. OpenSearch enforces credentials and encrypts traffic. Because the certs are self-signed, hostname verification is skipped (`verify: false`) on the Mage side.
 
-**`opensearch-values.yaml`** — security plugin enabled, TLS off:
+**`opensearch-values.yaml`** — security plugin enabled, HTTP TLS on, certs mounted from Secret:
 ```yaml
+secretMounts:
+  - name: opensearch-tls
+    secretName: opensearch-tls       # contains tls.crt, tls.key, ca.crt
+    path: /usr/share/opensearch/config/certs
 config:
   opensearch.yml: |
-    plugins.security.disabled: false   # auth enforced
-    # TLS not configured — in-cluster traffic only
+    plugins.security.disabled: false
+    plugins.security.ssl.http.enabled: true
+    plugins.security.ssl.http.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.http.pemkey_filepath:  certs/tls.key
+    plugins.security.ssl.http.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.ssl.transport.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.transport.pemkey_filepath:  certs/tls.key
+    plugins.security.ssl.transport.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.ssl.transport.enforce_hostname_verification: false
+    plugins.security.allow_default_init_securityindex: true
 ```
 
-**`values-log-search-staging.yaml`** — auth enabled, TLS off:
+**`values-log-search-staging.yaml`** — auth enabled, TLS enabled, hostname verification off:
 ```yaml
 logSearch:
   opensearch:
     auth:
       enabled: true
-      existingSecret: opensearch-auth   # contains OPENSEARCH_USERNAME / OPENSEARCH_PASSWORD
+      existingSecret: opensearch-auth     # contains OPENSEARCH_USERNAME / OPENSEARCH_PASSWORD
     tls:
-      enabled: false
+      enabled: true
+      existingSecret: opensearch-tls-ca  # contains ca.crt
+      verify: false                       # self-signed cert — skip hostname verification
 ```
 
 ---
@@ -256,3 +318,205 @@ The chart automatically mounts the CA cert into both the Mage container and the 
 > Note: the chart mounts the CA cert into Fluent Bit automatically, but `fluent-bit.conf`
 > must also have TLS enabled in the OUTPUT section to use it. Enabling
 > `logSearch.opensearch.tls` in chart values alone is not sufficient for Fluent Bit.
+
+---
+
+### Provisioning self-signed TLS certificates (staging)
+
+Run these steps **before** `helm upgrade opensearch` when enabling TLS for the first time.
+
+**1. Generate CA and node certificates:**
+```bash
+# CA key and cert
+openssl genrsa -out ca-key.pem 2048
+openssl req -new -x509 -days 3650 -key ca-key.pem -out ca.pem -subj "/CN=opensearch-ca"
+
+# Node key and CSR
+openssl genrsa -out node-key.pem 2048
+openssl req -new -key node-key.pem -out node.csr -subj "/CN=opensearch-cluster-master"
+
+# Sign node cert with CA — include in-cluster DNS SANs
+openssl x509 -req -days 3650 -in node.csr -CA ca.pem -CAkey ca-key.pem \
+  -CAcreateserial -out node.pem \
+  -extfile <(echo "subjectAltName=DNS:opensearch-cluster-master,DNS:opensearch-cluster-master.mage-search.svc.cluster.local")
+```
+
+**2. Create Kubernetes Secrets:**
+```bash
+# TLS cert + key for OpenSearch pod (in mage-search namespace)
+kubectl -n mage-search create secret generic opensearch-tls \
+  --from-file=tls.crt=node.pem \
+  --from-file=tls.key=node-key.pem \
+  --from-file=ca.crt=ca.pem
+
+# CA cert for Mage and Fluent Bit to trust OpenSearch (in mage namespace)
+kubectl -n mage create secret generic opensearch-tls-ca \
+  --from-file=ca.crt=ca.pem
+```
+
+**3. Upgrade OpenSearch with TLS config:**
+```bash
+helm upgrade opensearch opensearch/opensearch \
+  --namespace mage-search \
+  --values $HELM_CHART/examples/aws-eks/opensearch-values.yaml \
+  --set persistence.size=30Gi \
+  --set persistence.storageClass=gp2 \
+  --set-string 'extraEnvs[0].value=<your-opensearch-admin-password>' \
+  --reuse-values
+```
+
+**4. Create the Mage auth Secret (if not already exists):**
+```bash
+kubectl -n mage create secret generic opensearch-auth \
+  --from-literal=OPENSEARCH_USERNAME=admin \
+  --from-literal=OPENSEARCH_PASSWORD=<your-opensearch-admin-password>
+```
+
+**5. Update `fluent-bit.conf` ConfigMap** to enable TLS in the `[OUTPUT]` section:
+```ini
+[OUTPUT]
+    Name        opensearch
+    tls         On
+    tls.verify  Off
+    tls.ca_file /etc/ssl/opensearch/ca.crt
+```
+Then recreate the ConfigMap:
+```bash
+kubectl -n mage delete configmap fluent-bit-config
+kubectl -n mage create configmap fluent-bit-config \
+  --from-file=fluent-bit.conf=$MAGE_PRO/fluent-bit-prod.conf
+```
+
+**6. Upgrade Mage:**
+```bash
+helm upgrade --install mageai $HELM_CHART/charts/mageai \
+  --namespace mage --create-namespace \
+  --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
+  --values $ENV_OVERLAY \
+  --set image.repository=679849156117.dkr.ecr.us-west-2.amazonaws.com/mage-pro \
+  --set image.tag=<image-tag> \
+  --reuse-values
+```
+
+---
+
+## Troubleshooting
+
+### 1. OpenSearch crashes immediately after enabling security plugin
+
+**Symptom:** OpenSearch pod goes into `CrashLoopBackOff`. Logs show:
+```
+OpenSearchException[No SSL configuration found]
+```
+
+**Cause:** `plugins.security.disabled: false` requires TLS to be configured on both
+HTTP and transport layers. OpenSearch refuses to start if the security plugin is enabled
+but no certificates are provided.
+
+**Fix:** Provision TLS certificates and mount them before enabling security. Follow the
+"Provisioning self-signed TLS certificates (staging)" steps above, then re-run
+`helm upgrade opensearch` with the full `plugins.security.ssl.*` block in `opensearch.yml`.
+
+---
+
+### 2. Password with special characters fails in `--set`
+
+**Symptom:** `helm upgrade` accepts the command but OpenSearch rejects the password at
+runtime. The password contains special characters such as `$` or `!`.
+
+**Cause:** `--set` interpolates `$` as a shell variable, silently truncating or corrupting
+the value before it reaches Helm.
+
+**Fix:** Use `--set-string` instead of `--set` for password values:
+```bash
+--set-string 'extraEnvs[0].value=MyP@ss$word!'
+```
+
+---
+
+### 3. OpenSearch rejects credentials even though `OPENSEARCH_INITIAL_ADMIN_PASSWORD` was set
+
+**Symptom:** `curl -u 'admin:<your-password>'` returns `Unauthorized`. The password was
+passed via `--set-string extraEnvs[0].value=<password>` during `helm install`.
+
+**Cause:** OpenSearch's demo security installer sets the `admin` user's password from
+`OPENSEARCH_INITIAL_ADMIN_PASSWORD` only on the **first** start. If the security index
+was already initialized (e.g., from a prior run with a different password or with
+`plugins.security.disabled: true`), the env var is ignored on subsequent starts and the
+password stays as the original demo default (`admin`).
+
+**Fix:** Use the actual demo password (`admin`) to authenticate, or re-initialize the
+security index. For staging, the simplest fix is to update the `opensearch-auth` Secret
+to use the real admin credentials:
+```bash
+kubectl -n mage delete secret opensearch-auth
+kubectl -n mage create secret generic opensearch-auth \
+  --from-literal=OPENSEARCH_USERNAME=admin \
+  --from-literal=OPENSEARCH_PASSWORD=admin
+kubectl -n mage rollout restart deployment/mageai
+```
+
+To confirm the actual password before updating the Secret:
+```bash
+kubectl -n mage-search exec -it opensearch-cluster-master-0 -- \
+  /bin/bash -c "curl -sk -u 'admin:admin' https://localhost:9200/_cat/indices?v"
+```
+
+---
+
+### 4. Helm upgrade hangs and times out on the setup Job
+
+**Symptom:** `helm upgrade` blocks for several minutes then fails with:
+```
+Error: context deadline exceeded
+```
+The log-search-setup Job pod does not appear in `kubectl -n mage get pods`.
+
+**Cause:** The Helm hook Job runs after every `helm upgrade`. If the Job takes longer
+than Helm's default wait timeout (usually 5 minutes) — for example, due to slow
+TLS handshake setup or image pull on first run — Helm times out even though the Job
+may complete successfully on its own.
+
+**Fix:** If the `mage_logs` index already exists (check with `_cat/indices`), skip the
+Job entirely for this upgrade:
+```bash
+helm upgrade ... --set logSearch.setupJob.enabled=false
+```
+Once confirmed the index exists and is healthy, add `logSearch.setupJob.enabled: false`
+to your env overlay so it is skipped permanently.
+
+---
+
+### 5. Fluent Bit cannot find log files — "error scanning path"
+
+**Symptom:** Fluent Bit logs show repeated errors:
+```
+[error] [input:tail:tail.0] read error, check permissions: /home/mage_data/*/pipelines/*/.logs/*/*/*log
+[warn]  [input:tail:tail.0] error scanning path: /home/mage_data/*/pipelines/*/.logs/*/*/*log
+```
+No documents are being shipped to OpenSearch.
+
+**Cause:** The Fluent Bit `Path` glob uses `/home/mage_data/` as the base, which is the
+path Mage uses in Docker. In Kubernetes, the EFS PVC is mounted at `/home/src`, so Mage
+writes logs under `/home/src/mage_data/` instead. The path `/home/mage_data/` does not
+exist in the container.
+
+**Diagnosis:** Confirm the actual path by checking inside the Mage container:
+```bash
+kubectl -n mage exec -it <mageai-pod> -c mageai -- \
+  find /home/src -name "*.log" -path "*/.logs/*" 2>/dev/null | head -5
+```
+This will show paths like `/home/src/mage_data/default_repo/pipelines/...`.
+
+**Fix:** Update the `Path` in `fluent-bit-prod.conf`:
+```ini
+[INPUT]
+    Path   /home/src/mage_data/*/pipelines/*/.logs/*/*/*log
+```
+Then recreate the ConfigMap and restart the pod:
+```bash
+kubectl -n mage delete configmap fluent-bit-config
+kubectl -n mage create configmap fluent-bit-config \
+  --from-file=fluent-bit.conf=$MAGE_PRO/fluent-bit-prod.conf
+kubectl -n mage rollout restart deployment/mageai
+```

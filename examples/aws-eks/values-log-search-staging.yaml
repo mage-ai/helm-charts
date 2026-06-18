@@ -18,6 +18,10 @@ logSearch:
     auth:
       enabled: true
       existingSecret: opensearch-auth
+    tls:
+      enabled: true
+      existingSecret: opensearch-tls-ca   # contains ca.crt (CA cert for Mage/Fluent Bit to trust OpenSearch)
+      verify: false                        # self-signed cert — skip hostname verification
   persistence:
     existingClaim: pvc-mageai-staging
     subPath: mage_pro/mageai-staging-test
