@@ -1,0 +1,75 @@
+# Local Docker Desktop overrides for log search (Phase A).
+# See mage-pro docs/design/log-search.md §14.2
+
+image:
+  repository: mage-pro-local
+  tag: log-search-v3
+  pullPolicy: IfNotPresent
+
+postgresql:
+  enabled: true
+  auth:
+    username: mage
+    password: mage
+    database: mage
+
+redis:
+  enabled: true
+
+service:
+  type: LoadBalancer
+
+config:
+  MAGE_DATA_DIR: /home/mage_data
+  OPENSEARCH_HOST: opensearch-cluster-master.mage-search.svc.cluster.local
+  OPENSEARCH_PORT: "9200"
+  USE_OPENSEARCH_FOR_LOGS: "true"
+
+# Note: Docker Desktop Kubernetes cannot bind-mount Mac paths via hostPath
+# (even when /Users is in File sharing). Omit mage-fs so /home/src comes from
+# the image built by dev.Dockerfile. Rebuild the image after code changes.
+extraVolumes:
+  - name: mage-data
+    persistentVolumeClaim:
+      claimName: mage-data
+  - name: fluent-bit-config
+    configMap:
+      name: fluent-bit-config
+  - name: fluent-bit-parsers
+    configMap:
+      name: fluent-bit-parsers
+  - name: fluent-bit-state
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: mage-data
+    mountPath: /home/mage_data
+
+extraContainers:
+  - name: fluent-bit
+    image: fluent/fluent-bit:latest
+    securityContext:
+      runAsUser: 0
+    command:
+      - /fluent-bit/bin/fluent-bit
+      - -c
+      - /fluent-bit/etc/fluent-bit.conf
+    volumeMounts:
+      - name: mage-data
+        mountPath: /home/mage_data
+        readOnly: true
+      - name: fluent-bit-config
+        mountPath: /fluent-bit/etc/fluent-bit.conf
+        subPath: fluent-bit.conf
+      - name: fluent-bit-parsers
+        mountPath: /fluent-bit/etc/parsers.conf
+        subPath: parsers.conf
+      - name: fluent-bit-state
+        mountPath: /var/lib/fluent-bit
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

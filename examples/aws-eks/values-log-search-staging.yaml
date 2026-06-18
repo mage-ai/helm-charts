@@ -1,0 +1,27 @@
+# values-log-search-staging.yaml
+# Staging-cluster overlay for values-log-search.yaml.
+# PVC: pvc-mageai-staging (namespace: mage), EFS-backed, 50Gi, RWX.
+#
+# Usage:
+#   ENV_OVERLAY=$HELM_CHART/examples/aws-eks/values-log-search-staging.yaml
+#   helm upgrade mageai $HELM_CHART/charts/mageai \
+#     --namespace mage \
+#     --values $HELM_CHART/examples/aws-eks/values-log-search.yaml \
+#     --values $ENV_OVERLAY \
+#     --reuse-values
+
+logSearch:
+  opensearch:
+    # External OpenSearch installed in the mage-search namespace.
+    # Not needed when opensearch.enabled=true (bundled mode).
+    host: opensearch-cluster-master.mage-search.svc.cluster.local
+    auth:
+      enabled: true
+      existingSecret: opensearch-auth
+    tls:
+      enabled: true
+      existingSecret: opensearch-tls-ca   # contains ca.crt (CA cert for Mage/Fluent Bit to trust OpenSearch)
+      verify: false                        # self-signed cert — skip hostname verification
+  persistence:
+    existingClaim: pvc-mageai-staging
+    subPath: mage_pro/mageai-staging-test

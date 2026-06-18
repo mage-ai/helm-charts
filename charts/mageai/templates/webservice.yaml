@@ -130,12 +130,38 @@ spec:
             - name: K8S_DEFAULT_CONFIG_PATH
               value: /etc/mage/k8s-executor-config.yaml
           {{- end }}
+          {{- if and .Values.logSearch .Values.logSearch.enabled }}
+            - name: OPENSEARCH_HOST
+              value: {{ include "mageai.opensearchHost" . | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: USE_OPENSEARCH_FOR_LOGS
+              value: "true"
+            - name: OPENSEARCH_HTTP_SCHEME
+              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"https"{{ else }}"http"{{ end }}
+            - name: OPENSEARCH_LOG_INDEX
+              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
+            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_USERNAME
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_PASSWORD
+            {{- end }}
+          {{- end }}
           volumeMounts:
+          {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
           {{- if .Values.volumes }}
             - name: mage-fs
               mountPath: /home/src
           {{- else if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
             - name: workspace-config
@@ -147,6 +173,18 @@ spec:
             - name: k8s-executor-config
               mountPath: /etc/mage/k8s-executor-config.yaml
               subPath: config.yaml
+              readOnly: true
+          {{- end }}
+          {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim }}
+            - name: log-search-pvc
+              mountPath: /home/src
+              {{- if .Values.logSearch.persistence.subPath }}
+              subPath: {{ .Values.logSearch.persistence.subPath }}
+              {{- end }}
+          {{- end }}
+          {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+            - name: log-search-opensearch-ca
+              mountPath: /etc/ssl/opensearch
               readOnly: true
           {{- end }}
       {{- with .Values.nodeSelector }}
@@ -162,10 +200,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
       {{- if .Values.volumes }}
         {{- toYaml .Values.volumes | nindent 8 }}
-      {{- else if .Values.extraVolumes -}}
-        {{ toYaml .Values.extraVolumes | nindent 8 }}
+      {{- else if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+      {{- end }}
       {{- end }}
       {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
         - name: workspace-config
@@ -176,5 +216,17 @@ spec:
         - name: k8s-executor-config
           configMap:
             name: {{ include "mageai.fullname" . }}-k8s-executor-config
+      {{- end }}
+      {{- if and .Values.logSearch .Values.logSearch.enabled }}
+        {{- if .Values.logSearch.persistence.existingClaim }}
+        - name: log-search-pvc
+          persistentVolumeClaim:
+            claimName: {{ .Values.logSearch.persistence.existingClaim }}
+        {{- end }}
+        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+        - name: log-search-opensearch-ca
+          secret:
+            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
+        {{- end }}
       {{- end }}
 {{- end }}

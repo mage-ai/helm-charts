@@ -1,0 +1,44 @@
+# values-log-search.yaml
+# Shared Helm values for OpenSearch-backed log search on AWS EKS.
+#
+# Two deployment modes:
+#
+#   Bundled (quick-start / staging):
+#     Add --set opensearch.enabled=true to the helm upgrade command.
+#     OpenSearch is installed in the same release; no logSearch.opensearch.host needed.
+#
+#   External (production / managed cluster):
+#     Leave opensearch.enabled=false (default) and set logSearch.opensearch.host
+#     to point at the independently managed OpenSearch endpoint.
+#     helm install opensearch opensearch/opensearch --values opensearch-values.yaml ...
+#
+# See log-search-deployment.md for the full helm upgrade command and deployment steps.
+#
+# Prerequisites (apply before helm install/upgrade):
+#   kubectl -n mage create configmap fluent-bit-config \
+#     --from-file=fluent-bit.conf=<path-to-mage-pro>/fluent-bit-prod.conf
+#   kubectl -n mage create configmap fluent-bit-parsers \
+#     --from-file=parsers.conf=<path-to-mage-pro>/fluent-bit-parsers.conf
+#   kubectl -n mage create configmap opensearch-setup-script \
+#     --from-file=opensearch_setup.py=<path-to-mage-pro>/scripts/opensearch_setup.py
+
+logSearch:
+  enabled: true
+  opensearch:
+    # Bundled mode  (opensearch.enabled=true):  host is auto-derived, leave empty.
+    # External mode (opensearch.enabled=false): set host in your env overlay
+    #   (e.g. values-log-search-staging.yaml) to the OpenSearch service DNS.
+    host: ""
+    port: "9200"
+  fluentBit:
+    enabled: true
+    existingConfigMap: fluent-bit-config
+    existingParsersConfigMap: fluent-bit-parsers
+  setupJob:
+    enabled: true
+    existingConfigMap: opensearch-setup-script
+
+# Clear chart defaults — logSearch.* now manages volumes, mounts, and the sidecar.
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []

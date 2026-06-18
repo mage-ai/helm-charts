@@ -70,6 +70,36 @@ postgresql:
     tag: 16.3.0-debian-12-r19
     pullPolicy: IfNotPresent
 
+# OpenSearch for log search — optional bundled deployment.
+# opensearch.enabled=true : installs OpenSearch together with the Mage chart
+#                           (quick-start / staging). Host is auto-derived.
+# opensearch.enabled=false: use an external / managed OpenSearch cluster and
+#                           set logSearch.opensearch.host explicitly.
+opensearch:
+  enabled: false
+  singleNode: true
+  replicas: 1
+  opensearchJavaOpts: "-Xms512m -Xmx512m"
+  # REQUIRED: override at deploy time with a strong password.
+  # --set opensearch.extraEnvs[0].value=<your-password>
+  # Do not commit a real password here.
+  extraEnvs:
+    - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      value: ""
+  config:
+    opensearch.yml: |
+      cluster.name: mage-logs
+      network.host: 0.0.0.0
+      plugins.security.disabled: false
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1536Mi
+  persistence:
+    size: 10Gi
+
 # Redis for distributed locking and caching (required for multiple replicas)
 redis:
   enabled: false
@@ -354,3 +384,56 @@ k8sExecutorConfig:
   #       operator: "Equal"
   #       value: "data"
   #       effect: "NoSchedule"
+
+# ------------------------------------------------------------------------------
+# Log search (OpenSearch + Fluent Bit)
+# ------------------------------------------------------------------------------
+
+# When enabled, renders OPENSEARCH_* env vars into the Mage container, adds a
+# Fluent Bit sidecar, and optionally creates an OpenSearch index setup Job.
+logSearch:
+  enabled: false
+
+  opensearch:
+    host: ""
+    port: "9200"
+    index: mage_logs
+    # Authentication — credentials stored in a Kubernetes Secret.
+    # Secret must contain keys: OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD.
+    auth:
+      enabled: false
+      existingSecret: ""
+    # TLS — for encrypted connections to OpenSearch.
+    # Secret must contain key: ca.crt (CA certificate).
+    # Production: enable auth and tls together; keep both disabled for staging quick-start.
+    tls:
+      enabled: false
+      existingSecret: ""
+      verify: true    # set false to skip hostname verification (not recommended)
+
+  # Existing PVC in the mage namespace that both the mageai container and the
+  # Fluent Bit sidecar will mount at /home/src.
+  persistence:
+    existingClaim: ""
+    subPath: ""
+
+  fluentBit:
+    enabled: true
+    # Name of an existing ConfigMap containing fluent-bit.conf
+    existingConfigMap: fluent-bit-config
+    # Name of an existing ConfigMap containing parsers.conf
+    existingParsersConfigMap: fluent-bit-parsers
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  # One-time Job that creates the mage_logs index in OpenSearch.
+  # Safe to re-run; disable after first successful run.
+  setupJob:
+    enabled: false
+    # Name of an existing ConfigMap containing opensearch_setup.py
+    existingConfigMap: opensearch-setup-script

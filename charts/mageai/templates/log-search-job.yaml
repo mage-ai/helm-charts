@@ -1,0 +1,69 @@
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.setupJob .Values.logSearch.setupJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mageai.fullname" . }}-log-search-setup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: python:3.11-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install opensearch-py -q
+              python /scripts/opensearch_setup.py
+          env:
+            - name: OPENSEARCH_HOST
+              value: {{ include "mageai.opensearchHost" . | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: OPENSEARCH_LOG_INDEX
+              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
+            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_USERNAME
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_PASSWORD
+            {{- end }}
+            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}
+            - name: OPENSEARCH_USE_SSL
+              value: "true"
+            - name: OPENSEARCH_VERIFY_CERTS
+              value: {{ .Values.logSearch.opensearch.tls.verify | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: setup-script
+              mountPath: /scripts
+            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+            - name: log-search-opensearch-ca
+              mountPath: /etc/ssl/opensearch
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: setup-script
+          configMap:
+            name: {{ .Values.logSearch.setupJob.existingConfigMap }}
+        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+        - name: log-search-opensearch-ca
+          secret:
+            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
+        {{- end }}
+{{- end }}

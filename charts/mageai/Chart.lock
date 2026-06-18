@@ -5,5 +5,8 @@ dependencies:
 - name: redis
   repository: https://charts.bitnami.com/bitnami
   version: 18.1.1
-digest: sha256:2fc0455e060a345ff3dea9d7ab4bc31983d71523a84df20dedb7bacaf5ade8bd
-generated: "2024-07-10T11:59:53.185421-07:00"
+- name: opensearch
+  repository: https://opensearch-project.github.io/helm-charts
+  version: 2.37.0
+digest: sha256:69f1d580f730e1bc39880acad964a5ca6a554a841f439f4d7fe04923dcce3a81
+generated: "2026-06-16T21:37:03.490935-04:00"

@@ -1,0 +1,81 @@
+# opensearch-values.yaml
+# Values for the OpenSearch Helm chart (opensearch-project/opensearch).
+#
+# Usage:
+#   helm repo add opensearch https://opensearch-project.github.io/helm-charts
+#   helm install opensearch opensearch/opensearch \
+#     --namespace mage-search --create-namespace \
+#     --values $HELM_CHART/examples/aws-eks/opensearch-values.yaml \
+#     --set persistence.size=30Gi \
+#     --set persistence.storageClass=gp2   # or gp3
+#
+# NOTE: Some OpenSearch versions require OPENSEARCH_INITIAL_ADMIN_PASSWORD to be
+# set even when security is disabled. Set it via a Secret or --set at deploy time:
+#   --set "extraEnvs[0].value=<your-password>"
+# Do NOT commit a real password here.
+
+# ── Topology ──────────────────────────────────────────────────────────────────
+# Staging: single node is sufficient.
+# Production: set replicas ≥ 3 and singleNode: false for HA.
+replicas: 1
+singleNode: true
+
+# ── JVM heap ──────────────────────────────────────────────────────────────────
+# Staging: 512m is sufficient.
+# Production: set to half of container memory limit (e.g. -Xms2g -Xmx2g).
+opensearchJavaOpts: "-Xms512m -Xmx512m"
+
+# ── Admin password ────────────────────────────────────────────────────────────
+# Required by OpenSearch at startup even when security is disabled.
+# Override at deploy time with --set "extraEnvs[0].value=<password>" —
+# do not hardcode a real password here.
+extraEnvs:
+  - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+    value: "<set-at-deploy-time>"
+
+# ── OpenSearch config ─────────────────────────────────────────────────────────
+config:
+  opensearch.yml: |
+    cluster.name: mage-logs
+    network.host: 0.0.0.0
+    # Security plugin enabled — requires TLS to be configured (see secretMounts and
+    # ssl settings below). Provision certs first (see log-search-deployment.md
+    # Authentication and TLS section) before deploying with this setting.
+    plugins.security.disabled: false
+    plugins.security.ssl.transport.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.transport.pemkey_filepath: certs/tls.key
+    plugins.security.ssl.transport.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.ssl.transport.enforce_hostname_verification: false
+    plugins.security.ssl.http.enabled: true
+    plugins.security.ssl.http.pemcert_filepath: certs/tls.crt
+    plugins.security.ssl.http.pemkey_filepath: certs/tls.key
+    plugins.security.ssl.http.pemtrustedcas_filepath: certs/ca.crt
+    plugins.security.allow_default_init_securityindex: true
+
+# ── TLS certificates ──────────────────────────────────────────────────────────
+# Mount the opensearch-tls Secret (containing tls.crt, tls.key, ca.crt) into
+# the OpenSearch pod. Create this Secret before helm install/upgrade:
+#   kubectl -n mage-search create secret generic opensearch-tls \
+#     --from-file=tls.crt=node.pem \
+#     --from-file=tls.key=node-key.pem \
+#     --from-file=ca.crt=ca.pem
+secretMounts:
+  - name: opensearch-tls
+    secretName: opensearch-tls
+    path: /usr/share/opensearch/config/certs
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+# Size and storageClass are overridden at deploy time via --set.
+# Staging: 30Gi gp2. Production: size to expected log volume.
+persistence:
+  size: 10Gi        # overridden by --set persistence.size=30Gi at deploy time
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# Staging: minimal footprint.
+# Production: increase to match heap size and expected query load.
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 250m
+  limits:
+    memory: 1536Mi
