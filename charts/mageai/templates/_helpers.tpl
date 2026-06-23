@@ -165,7 +165,7 @@ or existing log-search claims are not created and then left unused.
 {{- else if .Values.extraVolumeMounts }}
 {{- range .Values.extraVolumeMounts }}
 {{- if not (and $logSearchOwnsMount (eq .mountPath $logSearchMountPath)) }}
-{{- toYaml (list .) }}
+{{ toYaml (list .) }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -194,7 +194,7 @@ or existing log-search claims are not created and then left unused.
 {{- else if .Values.extraVolumes }}
 {{- range .Values.extraVolumes }}
 {{- if not (and $logSearchOwnsMount (eq .name $skipVolumeName)) }}
-{{- toYaml (list .) }}
+{{ toYaml (list .) }}
 {{- end }}
 {{- end }}
 {{- end }}
