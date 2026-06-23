@@ -190,9 +190,7 @@ or existing log-search claims are not created and then left unused.
 {{- end }}
 {{- end }}
 {{- if .Values.volumes }}
-{{- if not $logSearchOwnsMount }}
 {{- toYaml .Values.volumes }}
-{{- end }}
 {{- else if .Values.extraVolumes }}
 {{- range .Values.extraVolumes }}
 {{- if not (and $logSearchOwnsMount (eq .name $skipVolumeName)) }}
