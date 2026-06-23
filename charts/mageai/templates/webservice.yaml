@@ -155,12 +155,7 @@ spec:
             {{- end }}
           {{- end }}
           volumeMounts:
-          {{- if .Values.volumes }}
-            - name: mage-fs
-              mountPath: /home/src
-          {{- else if .Values.extraVolumeMounts }}
-            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
-          {{- end }}
+            {{- include "mageai.projectVolumeMounts" . | nindent 12 }}
           {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
             - name: workspace-config
               mountPath: /etc/mage/workspace-config.yaml
@@ -172,13 +167,6 @@ spec:
               mountPath: /etc/mage/k8s-executor-config.yaml
               subPath: config.yaml
               readOnly: true
-          {{- end }}
-          {{- if and .Values.logSearch .Values.logSearch.enabled (or .Values.logSearch.persistence.existingClaim .Values.logSearch.persistence.enabled) .Values.logSearch.persistence.mountInMageContainer (not .Values.volumes) (not (include "mageai.logSearch.extraVolumeMountsContainMountPath" .)) }}
-            - name: log-search-pvc
-              mountPath: {{ .Values.logSearch.persistence.mountPath | default "/home/src" }}
-              {{- if .Values.logSearch.persistence.subPath }}
-              subPath: {{ .Values.logSearch.persistence.subPath }}
-              {{- end }}
           {{- end }}
           {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
             - name: log-search-opensearch-ca
@@ -198,11 +186,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      {{- if .Values.volumes }}
-        {{- toYaml .Values.volumes | nindent 8 }}
-      {{- else if .Values.extraVolumes }}
-        {{- toYaml .Values.extraVolumes | nindent 8 }}
-      {{- end }}
+        {{- include "mageai.projectVolumes" . | nindent 8 }}
       {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
         - name: workspace-config
           configMap:
@@ -213,16 +197,5 @@ spec:
           configMap:
             name: {{ include "mageai.fullname" . }}-k8s-executor-config
       {{- end }}
-      {{- if and .Values.logSearch .Values.logSearch.enabled }}
-        {{- if or .Values.logSearch.persistence.existingClaim .Values.logSearch.persistence.enabled }}
-        - name: log-search-pvc
-          persistentVolumeClaim:
-            claimName: {{ include "mageai.logSearch.persistenceClaimName" . }}
-        {{- end }}
-        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
-        - name: log-search-opensearch-ca
-          secret:
-            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
-        {{- end }}
-      {{- end }}
+        {{- include "mageai.logSearch.volumes" (dict "root" . "includeFluentBit" false) | nindent 8 }}
 {{- end }}

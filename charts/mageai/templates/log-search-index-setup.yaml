@@ -71,23 +71,23 @@ spec:
             - |
               set -eu
               url="${OPENSEARCH_SCHEME}://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}/${OPENSEARCH_INDEX}"
-              curl_args="-sS"
+              set -- -sS
               if [ -n "${OPENSEARCH_USERNAME:-}" ] && [ -n "${OPENSEARCH_PASSWORD:-}" ]; then
-                curl_args="${curl_args} -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}"
+                set -- "$@" -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}"
               fi
               if [ "${OPENSEARCH_SCHEME}" = "https" ]; then
                 if [ "${OPENSEARCH_TLS_VERIFY}" = "true" ] && [ -f /etc/ssl/opensearch/ca.crt ]; then
-                  curl_args="${curl_args} --cacert /etc/ssl/opensearch/ca.crt"
+                  set -- "$@" --cacert /etc/ssl/opensearch/ca.crt
                 elif [ "${OPENSEARCH_TLS_VERIFY}" != "true" ]; then
-                  curl_args="${curl_args} -k"
+                  set -- "$@" -k
                 fi
               fi
-              status="$(curl ${curl_args} -o /tmp/opensearch-response -w "%{http_code}" "${url}" || true)"
+              status="$(curl "$@" -o /tmp/opensearch-response -w "%{http_code}" "${url}" || true)"
               if [ "${status}" = "200" ]; then
                 cat /tmp/opensearch-response
                 exit 0
               fi
-              status="$(curl ${curl_args} -o /tmp/opensearch-response -w "%{http_code}" -X PUT "${url}" -H "Content-Type: application/json" --data-binary @/config/mapping.json || true)"
+              status="$(curl "$@" -o /tmp/opensearch-response -w "%{http_code}" -X PUT "${url}" -H "Content-Type: application/json" --data-binary @/config/mapping.json || true)"
               if [ "${status}" = "200" ] || [ "${status}" = "201" ]; then
                 cat /tmp/opensearch-response
                 exit 0
