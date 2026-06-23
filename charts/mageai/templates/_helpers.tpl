@@ -87,9 +87,54 @@ Otherwise use logSearch.opensearch.host as-is.
 {{- define "mageai.opensearchHost" -}}
 {{- if and .Values.opensearch .Values.opensearch.enabled (eq "" .Values.logSearch.opensearch.host) -}}
 {{- default "opensearch-cluster-master" .Values.opensearch.masterService -}}
-{{- else -}}
+{{- else if .Values.logSearch.opensearch.host -}}
 {{- .Values.logSearch.opensearch.host -}}
+{{- else -}}
+{{- fail "logSearch.opensearch.host is required when logSearch.enabled=true and opensearch.enabled=false" -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Generated resource names for log search.
+*/}}
+{{- define "mageai.logSearch.claimName" -}}
+{{- printf "%s-log-search" (include "mageai.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.fluentBitConfigMapName" -}}
+{{- printf "%s-fluent-bit" (include "mageai.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.fluentBitConfigMap" -}}
+{{- default (include "mageai.logSearch.fluentBitConfigMapName" .) .Values.logSearch.fluentBit.existingConfigMap -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.fluentBitParsersConfigMap" -}}
+{{- default (include "mageai.logSearch.fluentBitConfigMapName" .) .Values.logSearch.fluentBit.existingParsersConfigMap -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.indexSetupConfigMapName" -}}
+{{- printf "%s-log-search-index" (include "mageai.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.persistenceClaimName" -}}
+{{- default (include "mageai.logSearch.claimName" .) .Values.logSearch.persistence.existingClaim -}}
+{{- end -}}
+
+{{/*
+Return "true" when extraVolumeMounts already contains the log-search project
+mount path. This prevents duplicate mountPath entries when users already mount
+their project volume, while still preserving the rest of extraVolumeMounts.
+*/}}
+{{- define "mageai.logSearch.extraVolumeMountsContainMountPath" -}}
+{{- $mountPath := default "/home/src" .Values.logSearch.persistence.mountPath -}}
+{{- $found := false -}}
+{{- range .Values.extraVolumeMounts }}
+{{- if eq .mountPath $mountPath }}
+{{- $found = true -}}
+{{- end -}}
+{{- end -}}
+{{- if $found }}true{{ end -}}
 {{- end -}}
 
 {{/*

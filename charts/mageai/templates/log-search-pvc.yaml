@@ -1,0 +1,17 @@
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.enabled (not .Values.logSearch.persistence.existingClaim) -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mageai.logSearch.claimName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.logSearch.persistence.accessModes | nindent 4 }}
+  {{- with .Values.logSearch.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.logSearch.persistence.size }}
+{{- end }}

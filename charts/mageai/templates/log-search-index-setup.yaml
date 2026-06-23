@@ -1,0 +1,116 @@
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.setupJob.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mageai.logSearch.indexSetupConfigMapName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+data:
+  mapping.json: |
+    {{- tpl .Values.logSearch.setupJob.mapping . | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-log-search-index" (include "mageai.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    {{- with .Values.logSearch.setupJob.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.logSearch.setupJob.backoffLimit }}
+  {{- with .Values.logSearch.setupJob.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ . }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "mageai.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: log-search-index-setup
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: "{{ .Values.logSearch.setupJob.image.repository }}:{{ .Values.logSearch.setupJob.image.tag }}"
+          imagePullPolicy: {{ .Values.logSearch.setupJob.image.pullPolicy }}
+          env:
+            - name: OPENSEARCH_SCHEME
+              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"https"{{ else }}"http"{{ end }}
+            - name: OPENSEARCH_HOST
+              value: {{ include "mageai.opensearchHost" . | quote }}
+            - name: OPENSEARCH_PORT
+              value: {{ .Values.logSearch.opensearch.port | quote }}
+            - name: OPENSEARCH_INDEX
+              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
+            - name: OPENSEARCH_TLS_VERIFY
+              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.verify }}"true"{{ else }}"false"{{ end }}
+            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_USERNAME
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
+                  key: OPENSEARCH_PASSWORD
+            {{- end }}
+            {{- with .Values.logSearch.setupJob.extraEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              url="${OPENSEARCH_SCHEME}://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}/${OPENSEARCH_INDEX}"
+              curl_args="-sS"
+              if [ -n "${OPENSEARCH_USERNAME:-}" ] && [ -n "${OPENSEARCH_PASSWORD:-}" ]; then
+                curl_args="${curl_args} -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}"
+              fi
+              if [ "${OPENSEARCH_SCHEME}" = "https" ]; then
+                if [ "${OPENSEARCH_TLS_VERIFY}" = "true" ] && [ -f /etc/ssl/opensearch/ca.crt ]; then
+                  curl_args="${curl_args} --cacert /etc/ssl/opensearch/ca.crt"
+                elif [ "${OPENSEARCH_TLS_VERIFY}" != "true" ]; then
+                  curl_args="${curl_args} -k"
+                fi
+              fi
+              status="$(curl ${curl_args} -o /tmp/opensearch-response -w "%{http_code}" "${url}" || true)"
+              if [ "${status}" = "200" ]; then
+                cat /tmp/opensearch-response
+                exit 0
+              fi
+              status="$(curl ${curl_args} -o /tmp/opensearch-response -w "%{http_code}" -X PUT "${url}" -H "Content-Type: application/json" --data-binary @/config/mapping.json || true)"
+              if [ "${status}" = "200" ] || [ "${status}" = "201" ]; then
+                cat /tmp/opensearch-response
+                exit 0
+              fi
+              cat /tmp/opensearch-response
+              exit 1
+          volumeMounts:
+            - name: mapping
+              mountPath: /config
+            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+            - name: log-search-opensearch-ca
+              mountPath: /etc/ssl/opensearch
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.logSearch.setupJob.resources | nindent 12 }}
+      volumes:
+        - name: mapping
+          configMap:
+            name: {{ include "mageai.logSearch.indexSetupConfigMapName" . }}
+        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+        - name: log-search-opensearch-ca
+          secret:
+            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
+        {{- end }}
+{{- end }}

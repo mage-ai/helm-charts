@@ -1,0 +1,13 @@
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.fluentBit.enabled (or (not .Values.logSearch.fluentBit.existingConfigMap) (not .Values.logSearch.fluentBit.existingParsersConfigMap)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mageai.logSearch.fluentBitConfigMapName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+data:
+  fluent-bit.conf: |
+    {{- tpl .Values.logSearch.fluentBit.config . | nindent 4 }}
+  parsers.conf: |
+    {{- tpl .Values.logSearch.fluentBit.parsers . | nindent 4 }}
+{{- end }}
