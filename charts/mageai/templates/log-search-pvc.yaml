@@ -1,3 +1,4 @@
+{{- include "mageai.logSearch.validatePersistence" . -}}
 {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.enabled (not .Values.logSearch.persistence.existingClaim) -}}
 apiVersion: v1
 kind: PersistentVolumeClaim

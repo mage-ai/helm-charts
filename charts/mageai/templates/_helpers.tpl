@@ -121,6 +121,18 @@ Generated resource names for log search.
 {{- default (include "mageai.logSearch.claimName" .) .Values.logSearch.persistence.existingClaim -}}
 {{- end -}}
 
+{{- define "mageai.logSearch.validatePersistence" -}}
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.enabled (not .Values.logSearch.persistence.existingClaim) (not (has "ReadWriteMany" .Values.logSearch.persistence.accessModes)) -}}
+{{- if or .Values.standaloneScheduler (gt (int .Values.replicaCount) 1) -}}
+{{- fail "logSearch.persistence.enabled with a generated PVC requires logSearch.persistence.accessModes to include ReadWriteMany when standaloneScheduler=true or replicaCount > 1; use an existing RWX claim or set logSearch.persistence.accessModes={ReadWriteMany}" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.fluentBitChecksum" -}}
+{{- printf "%s\n%s\n%s\n%s" (tpl .Values.logSearch.fluentBit.config .) (tpl .Values.logSearch.fluentBit.parsers .) .Values.logSearch.fluentBit.existingConfigMap .Values.logSearch.fluentBit.existingParsersConfigMap | sha256sum -}}
+{{- end -}}
+
 {{/*
 Return "true" when extraVolumeMounts already contains the log-search project
 mount path. This prevents duplicate mountPath entries when users already mount

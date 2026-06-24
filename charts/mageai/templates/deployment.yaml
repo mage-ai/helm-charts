@@ -16,9 +16,14 @@ spec:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- if or .Values.podAnnotations (include "mageai.logSearch.fluentBitEnabled" .) }}
       annotations:
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if include "mageai.logSearch.fluentBitEnabled" . }}
+        checksum/log-search-fluent-bit: {{ include "mageai.logSearch.fluentBitChecksum" . }}
+        {{- end }}
       {{- end }}
       labels:
         {{- include "mageai.selectorLabels" . | nindent 8 }}

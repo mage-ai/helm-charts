@@ -71,6 +71,8 @@ tests:
           secret:
             secretName: internal-ca-certs
     asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/log-search-fluent-bit"]
       - equal:
           path: spec.template.spec.containers[0].env[1].name
           value: OPENSEARCH_HOST
@@ -136,6 +138,8 @@ tests:
       logSearch.enabled: true
       logSearch.persistence.enabled: true
     asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/log-search-fluent-bit"]
       - equal:
           path: spec.template.spec.containers[0].volumeMounts[0].name
           value: log-search-pvc

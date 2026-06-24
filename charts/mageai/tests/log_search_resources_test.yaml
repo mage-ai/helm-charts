@@ -127,6 +127,32 @@ tests:
           path: spec.resources.requests.storage
           value: 10Gi
 
+  - it: fails generated RWO PVC with standalone scheduler
+    template: templates/log-search-pvc.yaml
+    set:
+      standaloneScheduler: true
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: logSearch.persistence.enabled with a generated PVC requires logSearch.persistence.accessModes to include ReadWriteMany when standaloneScheduler=true or replicaCount > 1; use an existing RWX claim or set logSearch.persistence.accessModes={ReadWriteMany}
+
+  - it: permits generated RWX PVC with standalone scheduler
+    template: templates/log-search-pvc.yaml
+    set:
+      standaloneScheduler: true
+      fullnameOverride: mageai
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+      logSearch.persistence.accessModes:
+        - ReadWriteMany
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteMany
+
   - it: does not render generated PVC when an existing claim is supplied
     template: templates/log-search-pvc.yaml
     set:
