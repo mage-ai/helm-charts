@@ -21,7 +21,6 @@ Mage deployment guide — it covers only the log search feature.
 
 ```bash
 export HELM_CHART=~/mage/helm-charts        # path to this helm-charts repo
-export MAGE_PRO=~/mage/mage-pro             # path to mage-pro repo
 
 # IMPORTANT: set ENV_OVERLAY to the overlay file for your target environment.
 # - Staging:    values-log-search-staging.yaml  (uses pvc-mageai-staging)
@@ -98,24 +97,17 @@ logSearch:
       existingSecret: opensearch-auth
 ```
 
-### 6. Create prerequisite ConfigMaps (skip each if it already exists)
+### 6. Review chart-rendered log search resources
 
-```bash
-# Check what already exists
-kubectl -n mage get configmap fluent-bit-config fluent-bit-parsers opensearch-setup-script
+No Fluent Bit or OpenSearch setup ConfigMaps are required when using the default
+`logSearch.*` values. The chart renders:
 
-# Create only the missing ones
-# Note: use fluent-bit-prod.conf (K8s service DNS host), not fluent-bit.conf (Docker host)
-kubectl -n mage create configmap fluent-bit-config \
-  --from-file=fluent-bit.conf=$MAGE_PRO/fluent-bit-prod.conf
+- `mageai-fluent-bit` ConfigMap from `logSearch.fluentBit.config` and `logSearch.fluentBit.parsers`
+- `mageai-log-search-index` ConfigMap from `logSearch.setupJob.mapping`
+- a Helm hook Job that creates the `mage_logs` index from the rendered mapping
 
-kubectl -n mage create configmap fluent-bit-parsers \
-  --from-file=parsers.conf=$MAGE_PRO/fluent-bit-parsers.conf
-
-# The chart renders a post-install Job from this when logSearch.setupJob.enabled=true
-kubectl -n mage create configmap opensearch-setup-script \
-  --from-file=opensearch_setup.py=$MAGE_PRO/scripts/opensearch_setup.py
-```
+Only security-sensitive resources, such as OpenSearch credentials and TLS certificates,
+should remain externally managed Secrets.
 
 ### 7. Run helm upgrade
 
@@ -148,7 +140,7 @@ kubectl -n mage get pod -l app.kubernetes.io/name=mageai
 
 # Check the setup Job — if it ran and succeeded it will already be deleted (expected).
 # "No resources found" after a few minutes means it completed and was cleaned up.
-kubectl -n mage get jobs | grep log-search-setup
+kubectl -n mage get jobs | grep log-search-index
 
 # Confirm the mage_logs index was created and is receiving data
 kubectl -n mage-search get pods   # get the actual OpenSearch pod name first
@@ -165,9 +157,9 @@ Run these commands at any time to confirm all required resources are in place an
 ### Secrets and ConfigMaps
 
 ```bash
-# mage namespace — auth secret, TLS CA, and config
+# mage namespace — auth secret and TLS CA
 kubectl -n mage get secret opensearch-auth opensearch-tls-ca
-kubectl -n mage get configmap fluent-bit-config fluent-bit-parsers opensearch-setup-script
+kubectl -n mage get configmap mageai-fluent-bit mageai-log-search-index
 
 # mage-search namespace — TLS cert/key for the OpenSearch pod
 kubectl -n mage-search get secret opensearch-tls
@@ -212,14 +204,18 @@ section for fixes.
   `logSearch.*` values — no need to manage `extraContainers`/`extraVolumes` manually.
 - The OpenSearch index setup Job runs automatically as a Helm post-install/post-upgrade
   hook. This means Helm triggers the Job after every `helm upgrade` or `helm install`
-  completes — no manual `kubectl apply` needed. The Job spins up a `python:3.11-slim`
-  container, installs `opensearch-py`, and runs `opensearch_setup.py` to create the
-  `mage_logs` index. It is idempotent (safe to re-run if the index already exists)
+  completes — no manual `kubectl apply` needed. The Job runs a lightweight curl image
+  and applies the chart-rendered `logSearch.setupJob.mapping` to create the `mage_logs`
+  index. It is idempotent (safe to re-run if the index already exists)
   and self-cleaning — Helm deletes the Job pod automatically 5 minutes after it
   succeeds (`ttlSecondsAfterFinished: 300`). To disable it after the first successful
   run, set `logSearch.setupJob.enabled: false` in your env overlay.
 - For a new production cluster, create `examples/aws-eks/values-log-search-prod.yaml`
   with the production PVC name and subPath before running step 6.
+- For secured bundled OpenSearch, keep username/password and TLS certificate material
+  in externally managed Secrets. If you enable the OpenSearch security plugin with
+  custom security config, bootstrap the security index with `securityadmin.sh` before
+  relying on the chart's log-search index setup hook.
 
 ---
 
@@ -306,7 +302,11 @@ logSearch:
 
 The chart automatically mounts the CA cert into both the Mage container and the Fluent Bit sidecar at `/etc/ssl/opensearch` when `tls.enabled: true` — no extra volume configuration needed.
 
-**Step 4 — Update `fluent-bit.conf`** to enable TLS in the OUTPUT section:
+**Step 4 — Fluent Bit TLS**
+
+The default chart-rendered Fluent Bit config reads `logSearch.opensearch.tls` and
+sets the OpenSearch output TLS options automatically. If you override
+`logSearch.fluentBit.config`, keep these lines in the `[OUTPUT]` section:
 ```ini
 [OUTPUT]
     Name        opensearch
@@ -315,9 +315,8 @@ The chart automatically mounts the CA cert into both the Mage container and the 
     tls.ca_file /etc/ssl/opensearch/ca.crt
 ```
 
-> Note: the chart mounts the CA cert into Fluent Bit automatically, but `fluent-bit.conf`
-> must also have TLS enabled in the OUTPUT section to use it. Enabling
-> `logSearch.opensearch.tls` in chart values alone is not sufficient for Fluent Bit.
+> Note: the chart mounts the CA cert into Fluent Bit automatically when
+> `logSearch.opensearch.tls.existingSecret` is set.
 
 ---
 
@@ -372,19 +371,17 @@ kubectl -n mage create secret generic opensearch-auth \
   --from-literal=OPENSEARCH_PASSWORD=<your-opensearch-admin-password>
 ```
 
-**5. Update `fluent-bit.conf` ConfigMap** to enable TLS in the `[OUTPUT]` section:
+**5. Confirm Fluent Bit TLS config**
+
+The default chart-rendered Fluent Bit config enables TLS from
+`logSearch.opensearch.tls`. If you override `logSearch.fluentBit.config`, make sure
+the `[OUTPUT]` section includes:
 ```ini
 [OUTPUT]
     Name        opensearch
     tls         On
     tls.verify  Off
     tls.ca_file /etc/ssl/opensearch/ca.crt
-```
-Then recreate the ConfigMap:
-```bash
-kubectl -n mage delete configmap fluent-bit-config
-kubectl -n mage create configmap fluent-bit-config \
-  --from-file=fluent-bit.conf=$MAGE_PRO/fluent-bit-prod.conf
 ```
 
 **6. Upgrade Mage:**
@@ -508,12 +505,15 @@ kubectl -n mage exec -it <mageai-pod> -c mageai -- \
 ```
 This will show paths like `/home/src/mage_data/default_repo/pipelines/...`.
 
-**Fix:** Update the `Path` in `fluent-bit-prod.conf`:
+**Fix:** Override `logSearch.fluentBit.config` and set the `Path` in the `[INPUT]`
+section:
 ```ini
 [INPUT]
     Path   /home/src/mage_data/*/pipelines/*/.logs/*/*/*log
 ```
-Then recreate the ConfigMap and restart the pod:
+Then run `helm upgrade` again. If you are using an existing Fluent Bit ConfigMap
+through `logSearch.fluentBit.existingConfigMap`, recreate that ConfigMap and restart
+the pod:
 ```bash
 kubectl -n mage delete configmap fluent-bit-config
 kubectl -n mage create configmap fluent-bit-config \

@@ -90,7 +90,7 @@ opensearch:
     opensearch.yml: |
       cluster.name: mage-logs
       network.host: 0.0.0.0
-      plugins.security.disabled: false
+      plugins.security.disabled: true
   resources:
     requests:
       memory: 512Mi
@@ -98,6 +98,9 @@ opensearch:
     limits:
       memory: 1536Mi
   persistence:
+    # Set explicitly for bundled OpenSearch when your cluster has multiple
+    # storage classes, e.g. gp2 or gp3 on EKS.
+    storageClass: ""
     size: 10Gi
 
 # Redis for distributed locking and caching (required for multiple replicas)
@@ -414,15 +417,76 @@ logSearch:
   # Existing PVC in the mage namespace that both the mageai container and the
   # Fluent Bit sidecar will mount at /home/src.
   persistence:
+    # When enabled and existingClaim is empty, the chart creates a PVC for log
+    # search project logs.
+    enabled: false
     existingClaim: ""
+    mountPath: /home/src
+    # Set false when extraVolumeMounts already mounts the same project path.
+    mountInMageContainer: true
     subPath: ""
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
 
   fluentBit:
     enabled: true
-    # Name of an existing ConfigMap containing fluent-bit.conf
-    existingConfigMap: fluent-bit-config
-    # Name of an existing ConfigMap containing parsers.conf
-    existingParsersConfigMap: fluent-bit-parsers
+    image:
+      repository: fluent/fluent-bit
+      tag: latest
+      pullPolicy: IfNotPresent
+    # Optional names of existing ConfigMaps. When empty, this chart creates a
+    # ConfigMap from config and parsers below.
+    existingConfigMap: ""
+    existingParsersConfigMap: ""
+    config: |
+      [SERVICE]
+          Flush            5
+          Daemon           Off
+          Log_Level        info
+          Parsers_File     /fluent-bit/etc/parsers.conf
+
+      [INPUT]
+          Name             tail
+          Tag              mage.*
+          Path             /home/src/mage_data/*/pipelines/*/.logs/*/*/*log
+          Parser           mage_log
+          Read_from_Head   On
+          Refresh_Interval 10
+          Skip_Long_Lines  On
+          DB               /var/lib/fluent-bit/state.db
+
+      [FILTER]
+          Name             parser
+          Match            mage.*
+          Key_Name         _json_
+          Parser           inner_json
+          Reserve_Data     On
+
+      [OUTPUT]
+          Name               opensearch
+          Match              *
+          Host               ${OPENSEARCH_HOST}
+          Port               ${OPENSEARCH_PORT}
+          Index              ${OPENSEARCH_LOG_INDEX}
+          Suppress_Type_Name On
+          tls                ${OPENSEARCH_TLS}
+          tls.verify         ${OPENSEARCH_VERIFY_CERTS}
+          tls.ca_file        /etc/ssl/opensearch/ca.crt
+          HTTP_User          ${OPENSEARCH_USERNAME}
+          HTTP_Passwd        ${OPENSEARCH_PASSWORD}
+          Id_Key             uuid
+          Write_Operation    upsert
+    parsers: |
+      [PARSER]
+          Name    mage_log
+          Format  regex
+          Regex   ^\S+\s+(?<_json_>\{.+\})$
+
+      [PARSER]
+          Name    inner_json
+          Format  json
     resources:
       requests:
         cpu: 50m
@@ -432,8 +496,47 @@ logSearch:
         memory: 128Mi
 
   # One-time Job that creates the mage_logs index in OpenSearch.
-  # Safe to re-run; disable after first successful run.
+  # Safe to re-run; the hook skips the index when it already exists.
   setupJob:
     enabled: false
-    # Name of an existing ConfigMap containing opensearch_setup.py
-    existingConfigMap: opensearch-setup-script
+    image:
+      repository: curlimages/curl
+      tag: 8.8.0
+      pullPolicy: IfNotPresent
+    annotations: {}
+    backoffLimit: 6
+    ttlSecondsAfterFinished: 300
+    extraEnv: []
+    resources: {}
+    mapping: |
+      {
+        "mappings": {
+          "properties": {
+            "pipeline_uuid": {"type": "keyword"},
+            "pipeline_run_id": {"type": "integer"},
+            "pipeline_schedule_id": {"type": "integer"},
+            "block_uuid": {"type": "keyword"},
+            "block_run_id": {"type": "integer"},
+            "block_type": {"type": "keyword"},
+            "level": {"type": "keyword"},
+            "message": {
+              "type": "text",
+              "fields": {
+                "keyword": {"type": "keyword", "ignore_above": 2048}
+              }
+            },
+            "timestamp": {"type": "double"},
+            "uuid": {"type": "keyword"},
+            "file_type": {"type": "keyword"},
+            "hostname": {"type": "keyword"},
+            "logged_at": {
+              "type": "date",
+              "format": "yyyy-MM-dd'T'HH:mm:ss"
+            }
+          }
+        },
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 0
+        }
+      }

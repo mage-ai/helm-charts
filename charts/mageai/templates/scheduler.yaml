@@ -12,9 +12,14 @@ spec:
       {{- include "mageai.schedulerSelectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- if or .Values.podAnnotations (include "mageai.logSearch.fluentBitEnabled" .) }}
       annotations:
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if include "mageai.logSearch.fluentBitEnabled" . }}
+        checksum/log-search-fluent-bit: {{ include "mageai.logSearch.fluentBitChecksum" . }}
+        {{- end }}
       {{- end }}
       labels:
         {{- include "mageai.schedulerSelectorLabels" . | nindent 8 }}
@@ -127,14 +132,7 @@ spec:
             {{- end }}
           {{- end }}
           volumeMounts:
-          {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
-          {{- if .Values.volumes }}
-            - name: mage-fs
-              mountPath: /home/src
-          {{- else if .Values.extraVolumeMounts }}
-            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
-          {{- end }}
-          {{- end }}
+            {{- include "mageai.projectVolumeMounts" . | nindent 12 }}
           {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
             - name: workspace-config
               mountPath: /etc/mage/workspace-config.yaml
@@ -147,75 +145,12 @@ spec:
               subPath: config.yaml
               readOnly: true
           {{- end }}
-          {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim }}
-            - name: log-search-pvc
-              mountPath: /home/src
-              {{- if .Values.logSearch.persistence.subPath }}
-              subPath: {{ .Values.logSearch.persistence.subPath }}
-              {{- end }}
-          {{- end }}
           {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
             - name: log-search-opensearch-ca
               mountPath: /etc/ssl/opensearch
               readOnly: true
           {{- end }}
-        {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.fluentBit.enabled .Values.logSearch.persistence.existingClaim }}
-        - name: fluent-bit
-          image: fluent/fluent-bit:latest
-          securityContext:
-            runAsUser: 0
-          command:
-            - /fluent-bit/bin/fluent-bit
-            - -c
-            - /fluent-bit/etc/fluent-bit.conf
-          env:
-            - name: OPENSEARCH_HOST
-              value: {{ include "mageai.opensearchHost" . | quote }}
-            - name: OPENSEARCH_PORT
-              value: {{ .Values.logSearch.opensearch.port | quote }}
-            - name: OPENSEARCH_LOG_INDEX
-              value: {{ .Values.logSearch.opensearch.index | default "mage_logs" | quote }}
-            - name: OPENSEARCH_TLS
-              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}"On"{{ else }}"Off"{{ end }}
-            - name: OPENSEARCH_VERIFY_CERTS
-              value: {{ if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.verify }}"On"{{ else }}"Off"{{ end }}
-            {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
-            - name: OPENSEARCH_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
-                  key: OPENSEARCH_USERNAME
-            - name: OPENSEARCH_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
-                  key: OPENSEARCH_PASSWORD
-            {{- end }}
-          volumeMounts:
-            {{- if .Values.logSearch.persistence.existingClaim }}
-            - name: log-search-pvc
-              mountPath: /home/src
-              readOnly: true
-              {{- if .Values.logSearch.persistence.subPath }}
-              subPath: {{ .Values.logSearch.persistence.subPath }}
-              {{- end }}
-            {{- end }}
-            - name: log-search-fluent-bit-config
-              mountPath: /fluent-bit/etc/fluent-bit.conf
-              subPath: fluent-bit.conf
-            - name: log-search-fluent-bit-parsers
-              mountPath: /fluent-bit/etc/parsers.conf
-              subPath: parsers.conf
-            - name: log-search-fluent-bit-state
-              mountPath: /var/lib/fluent-bit
-            {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
-            - name: log-search-opensearch-ca
-              mountPath: /etc/ssl/opensearch
-              readOnly: true
-            {{- end }}
-          resources:
-            {{- toYaml .Values.logSearch.fluentBit.resources | nindent 12 }}
-        {{- end }}
+        {{- include "mageai.logSearch.fluentBitContainer" . | nindent 8 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -229,13 +164,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      {{- if not (and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.persistence.existingClaim) }}
-      {{- if .Values.volumes }}
-        {{- toYaml .Values.volumes | nindent 8 }}
-      {{- else if .Values.extraVolumes }}
-        {{- toYaml .Values.extraVolumes | nindent 8 }}
-      {{- end }}
-      {{- end }}
+        {{- include "mageai.projectVolumes" . | nindent 8 }}
       {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
         - name: workspace-config
           configMap:
@@ -246,26 +175,5 @@ spec:
           configMap:
             name: {{ include "mageai.fullname" . }}-k8s-executor-config
       {{- end }}
-      {{- if and .Values.logSearch .Values.logSearch.enabled }}
-        {{- if .Values.logSearch.persistence.existingClaim }}
-        - name: log-search-pvc
-          persistentVolumeClaim:
-            claimName: {{ .Values.logSearch.persistence.existingClaim }}
-        {{- end }}
-        {{- if and .Values.logSearch.fluentBit.enabled .Values.logSearch.persistence.existingClaim }}
-        - name: log-search-fluent-bit-config
-          configMap:
-            name: {{ .Values.logSearch.fluentBit.existingConfigMap }}
-        - name: log-search-fluent-bit-parsers
-          configMap:
-            name: {{ .Values.logSearch.fluentBit.existingParsersConfigMap }}
-        - name: log-search-fluent-bit-state
-          emptyDir: {}
-        {{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
-        - name: log-search-opensearch-ca
-          secret:
-            secretName: {{ .Values.logSearch.opensearch.tls.existingSecret }}
-        {{- end }}
-        {{- end }}
-      {{- end }}
+        {{- include "mageai.logSearch.volumes" (dict "root" . "includeFluentBit" true) | nindent 8 }}
 {{- end }}
