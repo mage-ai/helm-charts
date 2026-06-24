@@ -1,0 +1,138 @@
+suite: log search resource rendering
+templates:
+  - templates/log-search-fluent-bit-configmap.yaml
+  - templates/log-search-index-setup.yaml
+  - templates/log-search-pvc.yaml
+tests:
+  - it: does not render log-search resources when disabled
+    set:
+      logSearch.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders chart-managed Fluent Bit config from values
+    template: templates/log-search-fluent-bit-configmap.yaml
+    set:
+      fullnameOverride: mageai
+      logSearch.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: mageai-fluent-bit
+        documentIndex: 0
+      - exists:
+          path: data
+        documentIndex: 0
+      - matchRegex:
+          path: data["fluent-bit.conf"]
+          pattern: "Name\\s+opensearch"
+      - matchRegex:
+          path: data["parsers.conf"]
+          pattern: "Name\\s+mage_log"
+
+  - it: renders secured setup hook with quoted curl args and CA mount
+    template: templates/log-search-index-setup.yaml
+    set:
+      fullnameOverride: mageai
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.setupJob.enabled: true
+      logSearch.opensearch.auth.enabled: true
+      logSearch.opensearch.auth.existingSecret: opensearch-auth
+      logSearch.opensearch.tls.enabled: true
+      logSearch.opensearch.tls.existingSecret: opensearch-certs
+      logSearch.opensearch.tls.verify: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentSelector:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: mageai-log-search-index
+        documentSelector:
+          path: kind
+          value: ConfigMap
+      - isKind:
+          of: Job
+        documentSelector:
+          path: kind
+          value: Job
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,post-upgrade
+        documentSelector:
+          path: kind
+          value: Job
+      - equal:
+          path: spec.template.spec.containers[0].env[0].value
+          value: https
+        documentSelector:
+          path: kind
+          value: Job
+      - equal:
+          path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.name
+          value: opensearch-auth
+        documentSelector:
+          path: kind
+          value: Job
+      - matchRegex:
+          path: spec.template.spec.containers[0].command[2]
+          pattern: 'set -- "\$@" -u "\$\{OPENSEARCH_USERNAME\}:\$\{OPENSEARCH_PASSWORD\}"'
+        documentSelector:
+          path: kind
+          value: Job
+      - matchRegex:
+          path: spec.template.spec.containers[0].command[2]
+          pattern: 'curl "\$@"'
+        documentSelector:
+          path: kind
+          value: Job
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].name
+          value: log-search-opensearch-ca
+        documentSelector:
+          path: kind
+          value: Job
+      - equal:
+          path: spec.template.spec.volumes[1].secret.secretName
+          value: opensearch-certs
+        documentSelector:
+          path: kind
+          value: Job
+
+  - it: renders generated log-search PVC only when requested
+    template: templates/log-search-pvc.yaml
+    set:
+      fullnameOverride: mageai
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+      logSearch.persistence.size: 10Gi
+      logSearch.persistence.storageClassName: gp3
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+      - equal:
+          path: metadata.name
+          value: mageai-log-search
+      - equal:
+          path: spec.storageClassName
+          value: gp3
+      - equal:
+          path: spec.resources.requests.storage
+          value: 10Gi
+
+  - it: does not render generated PVC when an existing claim is supplied
+    template: templates/log-search-pvc.yaml
+    set:
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+      logSearch.persistence.existingClaim: pvc-mageai-staging
+    asserts:
+      - hasDocuments:
+          count: 0

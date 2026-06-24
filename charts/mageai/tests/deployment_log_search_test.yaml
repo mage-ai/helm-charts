@@ -1,0 +1,181 @@
+suite: deployment log search rendering
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: renders baseline project mounts without log search
+    set:
+      postgresql.enabled: false
+      logSearch.enabled: false
+      extraVolumeMounts:
+        - name: mage-fs
+          mountPath: /home/src
+          subPath: mage_pro/mageai-staging
+        - name: internal-ca-certs
+          mountPath: /etc/certs/ca
+          readOnly: true
+      extraVolumes:
+        - name: mage-fs
+          persistentVolumeClaim:
+            claimName: pvc-mageai-staging
+        - name: internal-ca-certs
+          secret:
+            secretName: internal-ca-certs
+    asserts:
+      - isKind:
+          of: Deployment
+      - isNull:
+          path: spec.template.spec.containers[1]
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: mage-fs
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /home/src
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].subPath
+          value: mage_pro/mageai-staging
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].name
+          value: internal-ca-certs
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: mage-fs
+      - equal:
+          path: spec.template.spec.volumes[1].name
+          value: internal-ca-certs
+
+  - it: renders secured bundled OpenSearch env, sidecar, and CA mounts
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.opensearch.auth.enabled: true
+      logSearch.opensearch.auth.existingSecret: opensearch-auth
+      logSearch.opensearch.tls.enabled: true
+      logSearch.opensearch.tls.existingSecret: opensearch-certs
+      logSearch.opensearch.tls.verify: true
+      logSearch.persistence.existingClaim: pvc-mageai-staging
+      logSearch.persistence.subPath: mage_pro/mageai-staging
+      extraVolumeMounts:
+        - name: mage-fs
+          mountPath: /home/src
+          subPath: mage_pro/mageai-staging
+        - name: internal-ca-certs
+          mountPath: /etc/certs/ca
+          readOnly: true
+      extraVolumes:
+        - name: mage-fs
+          persistentVolumeClaim:
+            claimName: pvc-mageai-staging
+        - name: internal-ca-certs
+          secret:
+            secretName: internal-ca-certs
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[1].name
+          value: OPENSEARCH_HOST
+      - equal:
+          path: spec.template.spec.containers[0].env[1].value
+          value: opensearch-cluster-master
+      - equal:
+          path: spec.template.spec.containers[0].env[4].name
+          value: OPENSEARCH_HTTP_SCHEME
+      - equal:
+          path: spec.template.spec.containers[0].env[4].value
+          value: https
+      - equal:
+          path: spec.template.spec.containers[0].env[6].valueFrom.secretKeyRef.name
+          value: opensearch-auth
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: internal-ca-certs
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].subPath
+          value: mage_pro/mageai-staging
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[2].name
+          value: log-search-opensearch-ca
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: fluent-bit
+      - equal:
+          path: spec.template.spec.containers[1].env[0].value
+          value: opensearch-cluster-master
+      - equal:
+          path: spec.template.spec.containers[1].env[3].value
+          value: "On"
+      - equal:
+          path: spec.template.spec.containers[1].env[5].valueFrom.secretKeyRef.name
+          value: opensearch-auth
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts[0].readOnly
+          value: true
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts[4].name
+          value: log-search-opensearch-ca
+      - equal:
+          path: spec.template.spec.volumes[1].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.volumes[1].persistentVolumeClaim.claimName
+          value: pvc-mageai-staging
+      - equal:
+          path: spec.template.spec.volumes[5].secret.secretName
+          value: opensearch-certs
+
+  - it: mounts a generated log-search PVC in Mage and Fluent Bit
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: fluent-bit
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: log-search-pvc
+
+  - it: preserves arbitrary values.volumes when log-search persistence owns the project mount
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.persistence.enabled: true
+      volumes:
+        - name: custom-config
+          configMap:
+            name: custom-config
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: custom-config
+      - equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: custom-config
+      - equal:
+          path: spec.template.spec.volumes[1].name
+          value: log-search-pvc
+
+  - it: fails when external OpenSearch host is missing
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: false
+      logSearch.enabled: true
+      logSearch.opensearch.host: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: logSearch.opensearch.host is required when logSearch.enabled=true and opensearch.enabled=false
