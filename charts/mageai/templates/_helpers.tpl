@@ -167,25 +167,28 @@ their project volume, while still preserving the rest of extraVolumeMounts.
 
 {{- define "mageai.logSearch.workspaceEnv" -}}
 {{- if include "mageai.logSearch.workspaceEnabled" . }}
+{{- $fluentBitResources := default dict .Values.logSearch.fluentBit.resources -}}
+{{- $fluentBitResourceRequests := default dict $fluentBitResources.requests -}}
+{{- $fluentBitResourceLimits := default dict $fluentBitResources.limits -}}
 - name: WORKSPACE_USE_OPENSEARCH_FOR_LOGS
   value: "true"
 - name: LOG_SEARCH_FLUENT_BIT_CONFIG_MAP
   value: {{ include "mageai.logSearch.fluentBitConfigMap" . | quote }}
 - name: LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP
   value: {{ include "mageai.logSearch.fluentBitParsersConfigMap" . | quote }}
-{{- with .Values.logSearch.fluentBit.resources.requests.cpu }}
+{{- with $fluentBitResourceRequests.cpu }}
 - name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
   value: {{ . | quote }}
 {{- end }}
-{{- with .Values.logSearch.fluentBit.resources.requests.memory }}
+{{- with $fluentBitResourceRequests.memory }}
 - name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY
   value: {{ . | quote }}
 {{- end }}
-{{- with .Values.logSearch.fluentBit.resources.limits.cpu }}
+{{- with $fluentBitResourceLimits.cpu }}
 - name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU
   value: {{ . | quote }}
 {{- end }}
-{{- with .Values.logSearch.fluentBit.resources.limits.memory }}
+{{- with $fluentBitResourceLimits.memory }}
 - name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY
   value: {{ . | quote }}
 {{- end }}

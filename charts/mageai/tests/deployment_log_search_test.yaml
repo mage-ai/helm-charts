@@ -221,6 +221,28 @@ tests:
             name: OPENSEARCH_VERIFY_CERTS
             value: "false"
 
+  - it: renders workspace log-search bridge env when Fluent Bit resources are unset
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.fluentBit.resources: null
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORKSPACE_USE_OPENSEARCH_FOR_LOGS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_CONFIG_MAP
+            value: mageai-fluent-bit
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+
   - it: preserves arbitrary values.volumes when log-search persistence owns the project mount
     set:
       postgresql.enabled: false
