@@ -173,6 +173,22 @@ their project volume, while still preserving the rest of extraVolumeMounts.
   value: {{ include "mageai.logSearch.fluentBitConfigMap" . | quote }}
 - name: LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP
   value: {{ include "mageai.logSearch.fluentBitParsersConfigMap" . | quote }}
+{{- with .Values.logSearch.fluentBit.resources.requests.cpu }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.logSearch.fluentBit.resources.requests.memory }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.logSearch.fluentBit.resources.limits.cpu }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.logSearch.fluentBit.resources.limits.memory }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY
+  value: {{ . | quote }}
+{{- end }}
 {{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
 - name: LOG_SEARCH_OPENSEARCH_AUTH_SECRET
   value: {{ .Values.logSearch.opensearch.auth.existingSecret | quote }}

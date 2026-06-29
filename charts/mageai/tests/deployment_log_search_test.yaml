@@ -165,6 +165,10 @@ tests:
       logSearch.opensearch.tls.verify: false
       logSearch.fluentBit.existingConfigMap: workspace-fluent-bit
       logSearch.fluentBit.existingParsersConfigMap: workspace-fluent-bit-parsers
+      logSearch.fluentBit.resources.requests.cpu: 100m
+      logSearch.fluentBit.resources.requests.memory: 256Mi
+      logSearch.fluentBit.resources.limits.cpu: 500m
+      logSearch.fluentBit.resources.limits.memory: 512Mi
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
@@ -181,6 +185,26 @@ tests:
           content:
             name: LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP
             value: workspace-fluent-bit-parsers
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+            value: 100m
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY
+            value: 256Mi
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU
+            value: 500m
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY
+            value: 512Mi
       - contains:
           path: spec.template.spec.containers[0].env
           content:

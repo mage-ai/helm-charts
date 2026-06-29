@@ -130,6 +130,8 @@ helm upgrade --install mageai $HELM_CHART/charts/mageai \
 
 `--reset-then-reuse-values` avoids carrying stale chart defaults while preserving existing release values that are not overridden by the supplied values files and flags. The Fluent Bit resource override prevents low default memory limits, such as 128Mi, from OOM-killing the sidecar during startup log tailing.
 
+When workspace log search is enabled, these same `logSearch.fluentBit.resources` values are also rendered onto the main Mage pod as `LOG_SEARCH_FLUENT_BIT_RESOURCE_*` env vars. The Mage workload manager reads those env vars when it creates or patches workspace StatefulSets, so newly created or restarted workspace pods receive the same Fluent Bit sidecar resource requests and limits.
+
 ## 6. Update the Existing OpenSearch Mapping If Needed
 
 The Helm setup Job creates the `mage_logs` index when it does not exist. On an existing staging cluster, the index may already exist, and the setup Job exits successfully without updating the mapping.
@@ -184,6 +186,10 @@ USE_OPENSEARCH_FOR_LOGS=true
 WORKSPACE_USE_OPENSEARCH_FOR_LOGS=true
 LOG_SEARCH_FLUENT_BIT_CONFIG_MAP=...
 LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP=...
+LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU=...
+LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY=...
+LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU=...
+LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY=...
 LOG_SEARCH_OPENSEARCH_AUTH_SECRET=...
 LOG_SEARCH_OPENSEARCH_TLS_SECRET=...
 ```
@@ -212,6 +218,15 @@ Verify the workspace pod includes the Fluent Bit sidecar and workspace log-searc
 kubectl -n mage describe pod <workspace-pod-name> \
   | grep -E "fluent-bit|WORKSPACE_USE_OPENSEARCH_FOR_LOGS|LOG_SEARCH_"
 ```
+
+Verify the workspace Fluent Bit sidecar received the resource requests and limits from the Helm values:
+
+```bash
+kubectl -n mage get pod <workspace-pod-name> \
+  -o jsonpath='{range .spec.containers[?(@.name=="fluent-bit")]}requests={.resources.requests} limits={.resources.limits}{"\n"}{end}'
+```
+
+Expected output includes the CPU and memory values set in `logSearch.fluentBit.resources`.
 
 Verify workspace Fluent Bit is running without auth, TLS, or path errors:
 
@@ -307,7 +322,7 @@ kubectl -n mage get pod "$POD" \
   -o jsonpath='{range .spec.containers[*]}{.name}{" requests="}{.resources.requests}{" limits="}{.resources.limits}{"\n"}{end}'
 ```
 
-Increase `logSearch.fluentBit.resources` in the Helm upgrade. On staging, start with requests of `100m` CPU and `256Mi` memory and limits of `500m` CPU and `512Mi` memory. If it still OOMs, temporarily raise the memory limit to confirm whether the failure is memory pressure or a Fluent Bit configuration loop.
+Increase `logSearch.fluentBit.resources` in the Helm upgrade. On staging, start with requests of `100m` CPU and `256Mi` memory and limits of `500m` CPU and `512Mi` memory. These values apply to the chart-rendered Mage pod Fluent Bit sidecar and are also bridged into workspace Fluent Bit sidecars through the main Mage pod's `LOG_SEARCH_FLUENT_BIT_RESOURCE_*` env vars. Restart or recreate workspace pods after the Helm upgrade so the workload manager can inject the updated sidecar resources. If Fluent Bit still OOMs, temporarily raise the memory limit to confirm whether the failure is memory pressure or a Fluent Bit configuration loop.
 
 ### Workspace Pod Pending With Unbound PVC
 
@@ -536,4 +551,3 @@ arn:aws:eks:us-west-2:679849156117:cluster/mage-pro-staging
 ### EFS CSI IAM Caveat
 
 These shell credentials let you run `kubectl`, Helm, and AWS inspection commands as your user. They do not automatically grant the EFS CSI controller permission to dynamically provision EFS access points. If workspace PVC provisioning fails with `Access Denied`, an AWS admin must attach or restore IAM permissions for the Kubernetes service account `kube-system/efs-csi-controller-sa`, usually with `AmazonEFSCSIDriverPolicy` through IRSA or EKS Pod Identity.
-
