@@ -161,6 +161,52 @@ their project volume, while still preserving the rest of extraVolumeMounts.
 {{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.fluentBit.enabled (or (include "mageai.logSearch.persistenceEnabled" .) .Values.volumes (include "mageai.logSearch.extraVolumeMountsContainMountPath" .)) }}true{{ end -}}
 {{- end -}}
 
+{{- define "mageai.logSearch.workspaceEnabled" -}}
+{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.workspace .Values.logSearch.workspace.enabled }}true{{ end -}}
+{{- end -}}
+
+{{- define "mageai.logSearch.workspaceEnv" -}}
+{{- if include "mageai.logSearch.workspaceEnabled" . }}
+{{- $fluentBitResources := default dict .Values.logSearch.fluentBit.resources -}}
+{{- $fluentBitResourceRequests := default dict $fluentBitResources.requests -}}
+{{- $fluentBitResourceLimits := default dict $fluentBitResources.limits -}}
+- name: WORKSPACE_USE_OPENSEARCH_FOR_LOGS
+  value: "true"
+- name: LOG_SEARCH_FLUENT_BIT_CONFIG_MAP
+  value: {{ include "mageai.logSearch.fluentBitConfigMap" . | quote }}
+- name: LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP
+  value: {{ include "mageai.logSearch.fluentBitParsersConfigMap" . | quote }}
+{{- with $fluentBitResourceRequests.cpu }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+  value: {{ . | quote }}
+{{- end }}
+{{- with $fluentBitResourceRequests.memory }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY
+  value: {{ . | quote }}
+{{- end }}
+{{- with $fluentBitResourceLimits.cpu }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU
+  value: {{ . | quote }}
+{{- end }}
+{{- with $fluentBitResourceLimits.memory }}
+- name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY
+  value: {{ . | quote }}
+{{- end }}
+{{- if and .Values.logSearch.opensearch.auth .Values.logSearch.opensearch.auth.enabled .Values.logSearch.opensearch.auth.existingSecret }}
+- name: LOG_SEARCH_OPENSEARCH_AUTH_SECRET
+  value: {{ .Values.logSearch.opensearch.auth.existingSecret | quote }}
+{{- end }}
+{{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled .Values.logSearch.opensearch.tls.existingSecret }}
+- name: LOG_SEARCH_OPENSEARCH_TLS_SECRET
+  value: {{ .Values.logSearch.opensearch.tls.existingSecret | quote }}
+{{- end }}
+{{- if and .Values.logSearch.opensearch.tls .Values.logSearch.opensearch.tls.enabled }}
+- name: OPENSEARCH_VERIFY_CERTS
+  value: {{ if .Values.logSearch.opensearch.tls.verify }}"true"{{ else }}"false"{{ end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{/*
 Render the project volume mount for the Mage container. When log search owns a
 PVC, that PVC takes precedence over the default /home/src mount so generated

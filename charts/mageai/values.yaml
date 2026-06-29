@@ -430,6 +430,11 @@ logSearch:
       - ReadWriteOnce
     size: 5Gi
 
+  # Enables Mage Pro workspace pods to inherit log search settings and attach
+  # their own Fluent Bit sidecar when the application creates workspace pods.
+  workspace:
+    enabled: true
+
   fluentBit:
     enabled: true
     image:
@@ -528,6 +533,10 @@ logSearch:
             "timestamp": {"type": "double"},
             "uuid": {"type": "keyword"},
             "file_type": {"type": "keyword"},
+            "project_uuid": {"type": "keyword"},
+            "workspace_uuid": {"type": "keyword"},
+            "workspace_name": {"type": "keyword"},
+            "repo_path_normalized": {"type": "keyword"},
             "hostname": {"type": "keyword"},
             "logged_at": {
               "type": "date",

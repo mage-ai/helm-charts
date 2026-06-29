@@ -153,6 +153,96 @@ tests:
           path: spec.template.spec.volumes[0].name
           value: log-search-pvc
 
+  - it: renders workspace log-search bridge env by default when log search is enabled
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.opensearch.auth.enabled: true
+      logSearch.opensearch.auth.existingSecret: opensearch-auth
+      logSearch.opensearch.tls.enabled: true
+      logSearch.opensearch.tls.existingSecret: opensearch-certs
+      logSearch.opensearch.tls.verify: false
+      logSearch.fluentBit.existingConfigMap: workspace-fluent-bit
+      logSearch.fluentBit.existingParsersConfigMap: workspace-fluent-bit-parsers
+      logSearch.fluentBit.resources.requests.cpu: 100m
+      logSearch.fluentBit.resources.requests.memory: 256Mi
+      logSearch.fluentBit.resources.limits.cpu: 500m
+      logSearch.fluentBit.resources.limits.memory: 512Mi
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORKSPACE_USE_OPENSEARCH_FOR_LOGS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_CONFIG_MAP
+            value: workspace-fluent-bit
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_PARSERS_CONFIG_MAP
+            value: workspace-fluent-bit-parsers
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+            value: 100m
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_MEMORY
+            value: 256Mi
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_CPU
+            value: 500m
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_LIMITS_MEMORY
+            value: 512Mi
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_OPENSEARCH_AUTH_SECRET
+            value: opensearch-auth
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_OPENSEARCH_TLS_SECRET
+            value: opensearch-certs
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENSEARCH_VERIFY_CERTS
+            value: "false"
+
+  - it: renders workspace log-search bridge env when Fluent Bit resources are unset
+    set:
+      postgresql.enabled: false
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.fluentBit.resources: null
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORKSPACE_USE_OPENSEARCH_FOR_LOGS
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_CONFIG_MAP
+            value: mageai-fluent-bit
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LOG_SEARCH_FLUENT_BIT_RESOURCE_REQUESTS_CPU
+
   - it: preserves arbitrary values.volumes when log-search persistence owns the project mount
     set:
       postgresql.enabled: false
