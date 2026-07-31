@@ -8,6 +8,8 @@ on:
 
 jobs:
   release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,7 +30,50 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo add opensearch https://opensearch-project.github.io/helm-charts
 
+      - name: Snapshot existing releases
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq '.[].tag_name' > "${RUNNER_TEMP}/releases-before.txt"
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.5.0
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Generate release notes
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          while IFS= read -r chart_file; do
+            chart_dir="${chart_file%/Chart.yaml}"
+            chart_name="$(helm show chart "${chart_dir}" | awk '/^name:/ { print $2; exit }')"
+            chart_version="$(helm show chart "${chart_dir}" | awk '/^version:/ { print $2; exit }')"
+            release_tag="${chart_name}-${chart_version}"
+
+            if grep -Fxq "${release_tag}" "${RUNNER_TEMP}/releases-before.txt"; then
+              continue
+            fi
+
+            if ! gh release view "${release_tag}" >/dev/null 2>&1; then
+              continue
+            fi
+
+            previous_tag="$(
+              git tag --list "${chart_name}-[0-9]*" --sort=-v:refname |
+                grep -Fxv "${release_tag}" |
+                head -n 1 || true
+            )"
+            request_fields=(-f "tag_name=${release_tag}")
+            if [[ -n "${previous_tag}" ]]; then
+              request_fields+=(-f "previous_tag_name=${previous_tag}")
+            fi
+
+            notes_file="${RUNNER_TEMP}/${release_tag}-notes.md"
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              "${request_fields[@]}" \
+              --jq '.body' > "${notes_file}"
+            gh release edit "${release_tag}" --notes-file "${notes_file}"
+          done < <(find charts -mindepth 2 -maxdepth 2 -name Chart.yaml -print)
