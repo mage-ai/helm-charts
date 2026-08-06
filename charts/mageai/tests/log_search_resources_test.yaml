@@ -34,6 +34,61 @@ tests:
           path: data["parsers.conf"]
           pattern: "Name\\s+mage_log"
 
+  - it: renders chart-managed Fluent Bit config for workspace sidecars when chart sidecar is disabled
+    template: templates/log-search-fluent-bit-configmap.yaml
+    set:
+      fullnameOverride: mageai
+      logSearch.enabled: true
+      logSearch.fluentBit.enabled: false
+      logSearch.workspace.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: mageai-fluent-bit
+        documentIndex: 0
+      - exists:
+          path: data["fluent-bit.conf"]
+        documentIndex: 0
+      - exists:
+          path: data["parsers.conf"]
+        documentIndex: 0
+
+  - it: renders workspace scope fields in setup mapping
+    template: templates/log-search-index-setup.yaml
+    set:
+      fullnameOverride: mageai
+      opensearch.enabled: true
+      logSearch.enabled: true
+      logSearch.setupJob.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["mapping.json"]
+          pattern: '"project_uuid": \{"type": "keyword"\}'
+        documentSelector:
+          path: kind
+          value: ConfigMap
+      - matchRegex:
+          path: data["mapping.json"]
+          pattern: '"workspace_uuid": \{"type": "keyword"\}'
+        documentSelector:
+          path: kind
+          value: ConfigMap
+      - matchRegex:
+          path: data["mapping.json"]
+          pattern: '"workspace_name": \{"type": "keyword"\}'
+        documentSelector:
+          path: kind
+          value: ConfigMap
+      - matchRegex:
+          path: data["mapping.json"]
+          pattern: '"repo_path_normalized": \{"type": "keyword"\}'
+        documentSelector:
+          path: kind
+          value: ConfigMap
+
   - it: renders secured setup hook with quoted curl args and CA mount
     template: templates/log-search-index-setup.yaml
     set:

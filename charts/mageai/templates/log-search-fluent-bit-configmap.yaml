@@ -1,4 +1,4 @@
-{{- if and .Values.logSearch .Values.logSearch.enabled .Values.logSearch.fluentBit.enabled (or (not .Values.logSearch.fluentBit.existingConfigMap) (not .Values.logSearch.fluentBit.existingParsersConfigMap)) -}}
+{{- if and .Values.logSearch .Values.logSearch.enabled (or .Values.logSearch.fluentBit.enabled (include "mageai.logSearch.workspaceEnabled" .)) (or (not .Values.logSearch.fluentBit.existingConfigMap) (not .Values.logSearch.fluentBit.existingParsersConfigMap)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:

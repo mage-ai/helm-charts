@@ -153,6 +153,7 @@ spec:
                   name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
                   key: OPENSEARCH_PASSWORD
             {{- end }}
+            {{- include "mageai.logSearch.workspaceEnv" . | nindent 12 }}
           {{- end }}
           volumeMounts:
             {{- include "mageai.projectVolumeMounts" . | nindent 12 }}
