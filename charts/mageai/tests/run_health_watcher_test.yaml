@@ -100,6 +100,31 @@ tests:
           path: spec.template.spec.volumes[3].name
           value: extra-certs
 
+  - it: renders log-search project PVC volume when log search owns project access
+    template: templates/run-health-watcher-deployment.yaml
+    set:
+      fullnameOverride: mageai
+      logSearch.enabled: true
+      logSearch.persistence.existingClaim: pvc-mageai-staging
+      logSearch.persistence.subPath: mage_pro/mageai-staging-test
+      runHealthWatcher.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /home/src
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].subPath
+          value: mage_pro/mageai-staging-test
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: pvc-mageai-staging
+
   - it: renders namespace-scoped watcher RBAC
     template: templates/run-health-watcher-rbac.yaml
     set:

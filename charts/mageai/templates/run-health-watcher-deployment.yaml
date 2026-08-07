@@ -154,4 +154,5 @@ spec:
       {{- with .Values.runHealthWatcher.extraVolumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
+        {{- include "mageai.logSearch.volumes" (dict "root" . "includeFluentBit" false) | nindent 8 }}
 {{- end }}
