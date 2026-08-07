@@ -52,6 +52,79 @@ webServer:
   #   maxReplicas: 10
   #   targetCPUUtilizationPercentage: 50
 
+# Dedicated run-health watcher deployment for detecting stuck/runaway runs and
+# scheduled-trigger impact alerts. Disabled by default; enable for Mage Pro
+# deployments that include the run-health watcher module.
+runHealthWatcher:
+  enabled: false
+  name: run-health-watcher
+  replicaCount: 1
+
+  # Defaults to the main Mage image when fields are left empty.
+  image:
+    repository: ""
+    tag: ""
+    digest: ""
+    pullPolicy: ""
+
+  command:
+    - /bin/sh
+    - -lc
+  args:
+    - cd /home/src && python -m mage_ai.orchestration.run_health.watcher
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  serviceAccount:
+    create: true
+    name: run-health-watcher
+    annotations: {}
+
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+  securityContext: {}
+  podSecurityContext: {}
+
+  env:
+    - name: MAGE_RUN_HEALTH_WATCHER_ENABLED
+      value: "true"
+    - name: MAGE_RUN_HEALTH_WATCHER_AUTO_TERMINATE_ENABLED
+      value: "false"
+    - name: MAGE_RUN_HEALTH_WATCHER_AUTO_TERMINATE_MAX_ACTIONS_PER_SCAN
+      value: "0"
+    - name: MAGE_RUN_HEALTH_WATCHER_CADENCE_SECONDS
+      value: "60"
+    - name: MAGE_RUN_HEALTH_WATCHER_LEASE_TTL_SECONDS
+      value: "120"
+    - name: MAGE_RUN_HEALTH_WATCHER_LONG_RUNNING_MINUTES
+      value: "120"
+    - name: MAGE_RUN_HEALTH_WATCHER_MINIMUM_IMPACT_COUNT
+      value: "1"
+    - name: MAGE_RUN_HEALTH_WATCHER_NO_PROGRESS_MINUTES
+      value: "30"
+    - name: MAGE_RUN_HEALTH_WATCHER_NOTIFICATION_COOLDOWN_MINUTES
+      value: "60"
+    - name: MAGE_RUN_HEALTH_WATCHER_OLD_ACTIVE_BACKFILL_LIMIT
+      value: "25"
+    - name: MAGE_RUN_HEALTH_WATCHER_SCAN_WINDOW_MINUTES
+      value: "1440"
+    - name: MAGE_RUN_HEALTH_WATCHER_SCHEDULER_HEARTBEAT_STALE_MINUTES
+      value: "10"
+
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
 # ------------------------------------------------------------------------------
 # Dependencies
 # ------------------------------------------------------------------------------
