@@ -1,0 +1,42 @@
+suite: web service selector rendering
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/webservice.yaml
+  - templates/run-health-watcher-deployment.yaml
+tests:
+  - it: selects only web pods when the run health watcher is enabled
+    set:
+      fullnameOverride: mageai
+      runHealthWatcher.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: web
+        template: templates/service.yaml
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: web
+        template: templates/deployment.yaml
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: run-health-watcher
+        template: templates/run-health-watcher-deployment.yaml
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: run-health-watcher
+        template: templates/run-health-watcher-deployment.yaml
+
+  - it: selects only standalone web service pods
+    set:
+      fullnameOverride: mageai
+      standaloneScheduler: true
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: web
+        template: templates/service.yaml
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: web
+        template: templates/webservice.yaml
