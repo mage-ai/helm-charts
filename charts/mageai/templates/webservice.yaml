@@ -1,4 +1,7 @@
 {{- if .Values.standaloneScheduler }}
+{{- $hpa := .Values.webServer.hpa | default dict }}
+{{- $serverReplicas := max .Values.webServer.replicaCount ($hpa.maxReplicas | default .Values.webServer.replicaCount) }}
+{{- $redisConfigured := or .Values.redis.enabled .Values.redis.customRedisURL }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,6 +10,10 @@ metadata:
     {{- include "mageai.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.webServer.replicaCount }}
+  {{- if and (eq (int $serverReplicas) 1) (not $redisConfigured) }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "mageai.selectorLabels" . | nindent 6 }}
@@ -104,10 +111,10 @@ spec:
                 name: {{ include "mageai.secretName" . }}
             {{- end }}
           env:
-          {{- if .Values.env }}
-            {{- toYaml .Values.env | nindent 12 }}
-          {{- else if .Values.extraEnvs }}
-            {{- toYaml .Values.extraEnvs | nindent 12 }}
+          {{- range (.Values.env | default .Values.extraEnvs) }}
+          {{- if and (ne .name "MAGE_SERVER_REPLICAS") (or (not $redisConfigured) (ne .name "MAGE_PRESENCE_REQUIRE_SHARED_REDIS")) }}
+            {{- toYaml (list .) | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
@@ -153,6 +160,12 @@ spec:
                   name: {{ .Values.logSearch.opensearch.auth.existingSecret }}
                   key: OPENSEARCH_PASSWORD
             {{- end }}
+          {{- end }}
+            - name: MAGE_SERVER_REPLICAS
+              value: {{ $serverReplicas | quote }}
+          {{- if $redisConfigured }}
+            - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+              value: "true"
           {{- end }}
           volumeMounts:
             {{- include "mageai.projectVolumeMounts" . | nindent 12 }}
