@@ -1,0 +1,234 @@
+suite: editor presence deployment safety
+templates:
+  - templates/deployment.yaml
+  - templates/webservice.yaml
+  - templates/scheduler.yaml
+
+tests:
+  - it: recreates the default Redis-free editor before starting its replacement
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "1"
+
+  - it: exposes multiple combined editor replicas without Redis
+    template: templates/deployment.yaml
+    set:
+      replicaCount: 2
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "2"
+
+  - it: uses the split editor count independently of scheduler and combined counts
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      replicaCount: 5
+      scheduler.replicaCount: 4
+      webServer.replicaCount: 1
+      extraEnvs:
+        - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+          value: "true"
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "true"
+
+  - it: exposes multiple split editor replicas without Redis
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      webServer.replicaCount: 2
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "2"
+
+  - it: preserves rolling upgrades with bundled Redis
+    template: templates/deployment.yaml
+    set:
+      redis.enabled: true
+      extraEnvs:
+        - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+          value: "false"
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "true"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "false"
+      - isNull:
+          path: spec.template.spec.containers[0].env[3]
+
+  - it: preserves rolling upgrades with external Redis
+    template: templates/deployment.yaml
+    set:
+      redis.customRedisURL: redis://shared-redis:6379/0
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "true"
+
+  - it: preserves split editor rolling upgrades with bundled Redis
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      redis.enabled: true
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "true"
+
+  - it: preserves split editor rolling upgrades with external Redis
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      redis.customRedisURL: redis://shared-redis:6379/0
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
+            value: "true"
+
+  - it: requires shared presence when the combined editor can autoscale
+    template: templates/deployment.yaml
+    set:
+      hpa.minReplicas: 1
+      hpa.maxReplicas: 3
+      hpa.targetCPUUtilizationPercentage: 80
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "3"
+
+  - it: uses only the split editor autoscaling maximum
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      scheduler.hpa.maxReplicas: 8
+      webServer.hpa.minReplicas: 1
+      webServer.hpa.maxReplicas: 3
+      webServer.hpa.targetCPUUtilizationPercentage: 80
+    asserts:
+      - isNull:
+          path: spec.strategy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "3"
+
+  - it: prevents extraEnvs from understating the editor count
+    template: templates/deployment.yaml
+    set:
+      replicaCount: 2
+      config.MAGE_SERVER_REPLICAS: "1"
+      extraEnvs:
+        - name: MAGE_SERVER_REPLICAS
+          value: "1"
+        - name: KEEP_ME
+          value: kept
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: KEEP_ME
+              value: kept
+            - name: MAGE_SERVER_REPLICAS
+              value: "2"
+
+  - it: preserves legacy env precedence while preventing a split replica override
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      webServer.replicaCount: 2
+      env:
+        - name: MAGE_SERVER_REPLICAS
+          value: "1"
+        - name: KEEP_ME
+          value: legacy
+      extraEnvs:
+        - name: KEEP_ME
+          value: ignored
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: KEEP_ME
+              value: legacy
+            - name: INSTANCE_TYPE
+              value: web_server
+            - name: MAGE_SERVER_REPLICAS
+              value: "2"
+
+  - it: keeps scheduler deployments outside the editor replica contract
+    template: templates/scheduler.yaml
+    set:
+      standaloneScheduler: true
+      scheduler.replicaCount: 4
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 4
+      - isNull:
+          path: spec.strategy
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_SERVER_REPLICAS
+            value: "4"
