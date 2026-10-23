@@ -143,6 +143,26 @@ initContainerImages:
   # Default is public Docker Hub BusyBox image.
   busybox: busybox
 
+# Validate project dependencies before starting Mage. The validator uses the
+# same Mage image, configuration, and project mounts as the application
+# container, but runs the startup dependency setup followed by these checks
+# without starting the web server or scheduler.
+dependencyValidation:
+  enabled: false
+  command:
+    - /app/run_app.sh
+    - /bin/bash
+    - -ec
+    - |
+      PROJECT_PATH="${USER_CODE_PATH:-default_repo}"
+      REQUIREMENTS_FILE="${PROJECT_PATH}/requirements.txt"
+      if [ -f "${REQUIREMENTS_FILE}" ]; then
+        python -m pip install -r "${REQUIREMENTS_FILE}"
+      fi
+      python -m pip check
+      python -c "import mage_ai.server.server"
+  resources: {}
+
 # ------------------------------------------------------------------------------
 # Naming and RBAC
 # ------------------------------------------------------------------------------

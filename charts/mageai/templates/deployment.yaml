@@ -38,7 +38,7 @@ spec:
       serviceAccountName: {{ include "mageai.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled }}
+      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled .Values.dependencyValidation.enabled }}
       initContainers:
         {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
         - name: wait-for-redis
@@ -58,16 +58,15 @@ spec:
           image: {{ .Values.initContainerImages.busybox }}
           command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
         {{- end }}
+        {{- if .Values.dependencyValidation.enabled }}
+        {{- include "mageai.dependencyValidationInitContainer" (dict "root" .) | nindent 8 }}
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          {{- if .Values.image.digest }}
-          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
-          {{- else }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          {{- end }}
+          image: {{ include "mageai.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
