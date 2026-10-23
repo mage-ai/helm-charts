@@ -80,11 +80,25 @@ tests:
           path: spec.template.spec.initContainers[0].env[0].name
           value: EXTRA_SETTING
       - equal:
+          path: spec.template.spec.initContainers[0].env[1].name
+          value: MAGE_DATA_DIR
+      - equal:
+          path: spec.template.spec.initContainers[0].env[1].value
+          value: /tmp/mage-validation-data
+      - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
           value: /home/src
       - equal:
           path: spec.template.spec.initContainers[0].volumeMounts[0].subPath
           value: project
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[1].name
+          value: dependency-validation-data
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[1].mountPath
+          value: /tmp/mage-validation-data
+      - isNotNull:
+          path: spec.template.spec.volumes[1].emptyDir
 
   - it: renders after the existing dependency readiness containers
     template: templates/deployment.yaml
@@ -119,6 +133,11 @@ tests:
           content:
             name: INSTANCE_TYPE
             value: web_server
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MAGE_DATA_DIR
+            value: /tmp/mage-validation-data
 
   - it: renders for the standalone scheduler with its instance type
     template: templates/scheduler.yaml
@@ -136,6 +155,11 @@ tests:
           content:
             name: INSTANCE_TYPE
             value: scheduler
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MAGE_DATA_DIR
+            value: /tmp/mage-validation-data
 
   - it: uses the same digest image for validation and the application
     template: templates/scheduler.yaml
@@ -169,6 +193,26 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].command[3]
           value: import mage_ai
+
+  - it: overrides a shared dependency data directory for validation
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      extraEnvs:
+        - name: MAGE_DATA_DIR
+          value: /home/src/mage_data
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].name
+          value: MAGE_DATA_DIR
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].value
+          value: /tmp/mage-validation-data
+      - lengthEqual:
+          path: spec.template.spec.initContainers[0].env
+          count: 1
 
   - it: falls back to the safe default when an upgraded release has no command
     template: templates/deployment.yaml

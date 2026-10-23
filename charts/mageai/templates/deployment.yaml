@@ -197,6 +197,10 @@ spec:
       {{- end }}
       volumes:
         {{- include "mageai.projectVolumes" . | nindent 8 }}
+      {{- if include "mageai.dependencyValidationEnabled" . }}
+        - name: dependency-validation-data
+          emptyDir: {}
+      {{- end }}
       {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
         - name: workspace-config
           configMap:

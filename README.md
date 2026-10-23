@@ -193,9 +193,15 @@ receive a validator with their corresponding `INSTANCE_TYPE`. Feature-specific
 sidecar settings, such as OpenSearch TLS mounts, are not automatically copied to
 the validator container.
 
+The chart sets `MAGE_DATA_DIR` to an init-container-local path so Mage creates
+the validator's managed virtual environment outside mounted project storage.
+Installing or resolving dependencies during validation therefore cannot modify
+the cached virtual environment used by pods from the existing release. The
+isolated environment is discarded with the init container.
+
 The default command:
 
-1. Runs `/app/run_app.sh` to prepare the normal Mage dependency environment.
+1. Runs `/app/run_app.sh` to prepare the isolated Mage dependency environment.
 2. Installs the project `requirements.txt` with fail-fast behavior.
 3. Imports the Mage server module.
 4. Imports the scheduler startup modules.
@@ -224,10 +230,10 @@ the check depends on Mage's managed dependency environment, and ensure custom
 checks are read-only and return a nonzero exit when validation fails.
 
 The init container and application container have separate writable image
-layers, but mounted volumes are shared. Avoid validation commands that mutate
-shared project state or a shared dependency cache. Mage still performs its
-normal dependency setup when the main container starts, so validation can add
-startup time and duplicate dependency work.
+layers, but project volumes remain shared. Custom validation commands should be
+read-only and must not mutate project files or other mounted state. Mage still
+performs its normal dependency setup when the main container starts, so
+validation can add startup time and duplicate dependency work.
 
 ## Upgrade
 

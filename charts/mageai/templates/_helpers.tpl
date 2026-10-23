@@ -129,10 +129,23 @@ same workload-specific environment as their main containers.
   {{- end }}
   env:
   {{- if $root.Values.env }}
-    {{- toYaml $root.Values.env | nindent 4 }}
+    {{- range $root.Values.env }}
+      {{- if ne .name "MAGE_DATA_DIR" }}
+        {{- toYaml (list .) | nindent 4 }}
+      {{- end }}
+    {{- end }}
   {{- else if $root.Values.extraEnvs }}
-    {{- toYaml $root.Values.extraEnvs | nindent 4 }}
+    {{- range $root.Values.extraEnvs }}
+      {{- if ne .name "MAGE_DATA_DIR" }}
+        {{- toYaml (list .) | nindent 4 }}
+      {{- end }}
+    {{- end }}
   {{- end }}
+    # Keep preflight dependency writes in the init container's ephemeral layer.
+    # This entry intentionally follows user-provided environment variables so
+    # validation cannot reuse or mutate the running deployment's cached venv.
+    - name: MAGE_DATA_DIR
+      value: /tmp/mage-validation-data
   {{- if $root.Values.redis.enabled }}
     - name: REDIS_URL
       value: redis://{{ $root.Release.Name }}-redis-headless:6379/0
@@ -158,6 +171,8 @@ same workload-specific environment as their main containers.
   {{- end }}
   volumeMounts:
     {{- include "mageai.projectVolumeMounts" $root | nindent 4 }}
+    - name: dependency-validation-data
+      mountPath: /tmp/mage-validation-data
   {{- if and $root.Values.workspaceConfig $root.Values.workspaceConfig.enabled }}
     - name: workspace-config
       mountPath: /etc/mage/workspace-config.yaml
