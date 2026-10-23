@@ -13,7 +13,7 @@ dependencyValidation:
 ```
 
 The default command reruns the project requirements installation with fail-fast
-behavior, runs `python -m pip check`, and imports the Mage server module. Override
+behavior, then imports the Mage server and scheduler startup modules. Override
 `dependencyValidation.command` to add project-specific checks. Any command that
 exits nonzero prevents the Mage application container from starting.
 

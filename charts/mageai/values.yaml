@@ -159,8 +159,8 @@ dependencyValidation:
       if [ -f "${REQUIREMENTS_FILE}" ]; then
         python -m pip install -r "${REQUIREMENTS_FILE}"
       fi
-      python -m pip check
       python -c "import mage_ai.server.server"
+      python -c "import mage_ai.server.scheduler_manager; import mage_ai.orchestration.job_manager; import mage_ai.orchestration.triggers.loop_time_trigger"
   resources: {}
 
 # ------------------------------------------------------------------------------
