@@ -92,6 +92,19 @@ image:
   pullPolicy: IfNotPresent
 ```
 
+To pin the image by digest instead, set `image.digest`:
+
+```yaml
+image:
+  repository: mageai/mageai
+  digest: "sha256:0123456789abcdef..."
+```
+
+When `image.digest` is non-empty, it takes precedence over `image.tag` for the
+combined Deployment and for both standalone web-server and scheduler
+Deployments. The same selected image is used by dependency validation when it
+is enabled.
+
 For a private registry, set `image.repository` and configure
 `imagePullSecrets` with Secrets that already exist in the release namespace.
 
@@ -259,6 +272,12 @@ helm diff upgrade mageai mageai/mageai \
 
 Pin chart and application image versions for repeatable production upgrades.
 Use `helm history` and `helm rollback` to return to an earlier release revision.
+
+Standalone releases now honor `image.digest` consistently with the combined
+Deployment. When upgrading a standalone release that carries both `image.tag`
+and a non-empty `image.digest`, verify that the digest identifies the intended
+image: the digest will be selected and can cause the web-server and scheduler
+pods to roll even when dependency validation is disabled.
 
 ## Uninstall
 

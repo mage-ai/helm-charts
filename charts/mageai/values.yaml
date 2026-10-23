@@ -126,6 +126,9 @@ image:
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  # Optional immutable image digest. When set, this takes precedence over tag
+  # for combined and standalone web-server/scheduler Deployments.
+  digest: ""
 
 # List of imagePullSecrets to use for pulling images from private registries.
 # These must already exist in the target namespace.

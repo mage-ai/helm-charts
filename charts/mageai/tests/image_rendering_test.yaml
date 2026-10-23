@@ -1,0 +1,29 @@
+suite: Mage application image rendering
+templates:
+  - templates/deployment.yaml
+  - templates/scheduler.yaml
+  - templates/webservice.yaml
+tests:
+  - it: standalone web server prefers the configured digest over the tag
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      image.repository: example/mageai
+      image.tag: stable
+      image.digest: sha256:abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/mageai@sha256:abcdef
+
+  - it: standalone scheduler prefers the configured digest over the tag
+    template: templates/scheduler.yaml
+    set:
+      standaloneScheduler: true
+      image.repository: example/mageai
+      image.tag: stable
+      image.digest: sha256:abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/mageai@sha256:abcdef
