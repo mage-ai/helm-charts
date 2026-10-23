@@ -97,16 +97,15 @@ same workload-specific environment as their main containers.
 {{- define "mageai.dependencyValidationInitContainer" -}}
 {{- $root := .root -}}
 {{- $instanceType := default "" .instanceType -}}
-{{- if not $root.Values.dependencyValidation.command -}}
-{{- fail "dependencyValidation.command must not be empty when dependencyValidation.enabled=true" -}}
-{{- end -}}
+{{- $defaultCommand := list "/app/run_app.sh" "/bin/bash" "-ec" (printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" "PROJECT_PATH=\"${USER_CODE_PATH:-default_repo}\"" "REQUIREMENTS_FILE=\"${PROJECT_PATH}/requirements.txt\"" "if [ -f \"${REQUIREMENTS_FILE}\" ]; then" "  python -m pip install -r \"${REQUIREMENTS_FILE}\"" "fi" "python -m pip check" "python -c \"import mage_ai.server.server\"") -}}
+{{- $command := default $defaultCommand $root.Values.dependencyValidation.command -}}
 - name: validate-dependencies
   securityContext:
     {{- toYaml $root.Values.securityContext | nindent 4 }}
   image: {{ include "mageai.image" $root | quote }}
   imagePullPolicy: {{ $root.Values.image.pullPolicy }}
   command:
-    {{- toYaml $root.Values.dependencyValidation.command | nindent 4 }}
+    {{- toYaml $command | nindent 4 }}
   resources:
     {{- toYaml $root.Values.dependencyValidation.resources | nindent 4 }}
   {{- if or $root.Values.config $root.Values.existingSecret $root.Values.secrets }}

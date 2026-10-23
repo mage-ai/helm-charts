@@ -160,7 +160,7 @@ tests:
           path: spec.template.spec.initContainers[0].command[3]
           value: import mage_ai
 
-  - it: rejects an empty validation command
+  - it: falls back to the safe default when an upgraded release has no command
     template: templates/deployment.yaml
     set:
       postgresql.enabled: false
@@ -168,5 +168,9 @@ tests:
       dependencyValidation.enabled: true
       dependencyValidation.command: []
     asserts:
-      - failedTemplate:
-          errorMessage: dependencyValidation.command must not be empty when dependencyValidation.enabled=true
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: /app/run_app.sh
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[3]
+          pattern: 'python -m pip install -r'
