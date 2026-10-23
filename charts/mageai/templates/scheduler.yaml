@@ -34,7 +34,7 @@ spec:
       serviceAccountName: {{ include "mageai.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled .Values.dependencyValidation.enabled }}
+      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled (include "mageai.dependencyValidationEnabled" .) }}
       initContainers:
         {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
         - name: wait-for-redis
@@ -54,7 +54,7 @@ spec:
           image: {{ .Values.initContainerImages.busybox }}
           command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
         {{- end }}
-        {{- if .Values.dependencyValidation.enabled }}
+        {{- if include "mageai.dependencyValidationEnabled" . }}
         {{- include "mageai.dependencyValidationInitContainer" (dict "root" . "instanceType" "scheduler") | nindent 8 }}
         {{- end }}
       {{- end }}

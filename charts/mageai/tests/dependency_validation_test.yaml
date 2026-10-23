@@ -13,6 +13,16 @@ tests:
       - isNull:
           path: spec.template.spec.initContainers
 
+  - it: supports reused values that do not contain the dependency validation map
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
   - it: renders validation with the Mage startup environment and project mounts
     template: templates/deployment.yaml
     set:

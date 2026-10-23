@@ -90,6 +90,14 @@ Render the Mage image reference shared by application and validation containers.
 {{- end -}}
 
 {{/*
+Return "true" when dependency validation is enabled. Older releases upgraded
+with --reuse-values may not have the dependencyValidation map at all.
+*/}}
+{{- define "mageai.dependencyValidationEnabled" -}}
+{{- if and .Values.dependencyValidation .Values.dependencyValidation.enabled }}true{{ end -}}
+{{- end -}}
+
+{{/*
 Render the optional dependency validation init container. The caller may pass
 an instanceType so split web server and scheduler deployments validate with the
 same workload-specific environment as their main containers.
