@@ -1,0 +1,25 @@
+suite: cleanup CronJob rendering
+templates:
+  - templates/cleanup-cronjob.yaml
+tests:
+  - it: does not render the cleanup CronJob when disabled
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the cleanup CronJob unsuspended by default
+    set:
+      cleanupJob.enabled: true
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: false
+
+  - it: renders a suspended cleanup CronJob
+    set:
+      cleanupJob.enabled: true
+      cleanupJob.suspend: true
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: true

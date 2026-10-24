@@ -156,7 +156,7 @@ initContainerImages:
 # the init container's ephemeral writable layer so validation cannot mutate the
 # running deployment's cached environment.
 dependencyValidation:
-  enabled: false
+  enabled: true
   command:
     - /app/run_app.sh
     - /bin/bash
@@ -348,6 +348,8 @@ extraEnvs:
 # CronJob for cleaning up old pipeline runs and logs
 cleanupJob:
   enabled: false
+  # Pause future cleanup job runs without removing the CronJob.
+  suspend: false
   clean_variable_cli_args: ""
   clean_log_cli_args: ""
   schedule_cron: "0 * * * *"  # Runs every hour

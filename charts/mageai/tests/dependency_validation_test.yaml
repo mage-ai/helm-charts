@@ -4,14 +4,15 @@ templates:
   - templates/scheduler.yaml
   - templates/webservice.yaml
 tests:
-  - it: does not render dependency validation by default
+  - it: renders dependency validation by default
     template: templates/deployment.yaml
     set:
       postgresql.enabled: false
       redis.enabled: false
     asserts:
-      - isNull:
-          path: spec.template.spec.initContainers
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: validate-dependencies
 
   - it: supports reused values that do not contain the dependency validation map
     template: templates/deployment.yaml
@@ -19,6 +20,16 @@ tests:
       postgresql.enabled: false
       redis.enabled: false
       dependencyValidation: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: does not render dependency validation when explicitly disabled
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: false
     asserts:
       - isNull:
           path: spec.template.spec.initContainers
