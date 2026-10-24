@@ -5,6 +5,7 @@ metadata:
   name: {{ include "mageai.fullname" . }}-cleanup-job
 spec:
   schedule: {{ .Values.cleanupJob.schedule_cron | default "0 * * * *" | quote }}
+  suspend: {{ .Values.cleanupJob.suspend | default false }}
   jobTemplate:
     spec:
       template:

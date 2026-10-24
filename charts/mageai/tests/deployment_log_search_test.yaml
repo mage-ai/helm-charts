@@ -46,6 +46,7 @@ tests:
 
   - it: renders secured bundled OpenSearch env, sidecar, and CA mounts
     set:
+      dependencyValidation.enabled: false
       postgresql.enabled: false
       opensearch.enabled: true
       logSearch.enabled: true
@@ -133,6 +134,7 @@ tests:
 
   - it: mounts a generated log-search PVC in Mage and Fluent Bit
     set:
+      dependencyValidation.enabled: false
       postgresql.enabled: false
       opensearch.enabled: true
       logSearch.enabled: true
@@ -155,6 +157,7 @@ tests:
 
   - it: preserves arbitrary values.volumes when log-search persistence owns the project mount
     set:
+      dependencyValidation.enabled: false
       postgresql.enabled: false
       opensearch.enabled: true
       logSearch.enabled: true

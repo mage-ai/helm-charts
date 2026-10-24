@@ -178,12 +178,26 @@ service:
 The repository also includes the `mageai-ingress` chart for managing ingress
 separately.
 
+## Pause cleanup jobs
+
+When the optional cleanup CronJob is enabled, set `cleanupJob.suspend` to
+`true` to pause future runs while retaining the CronJob configuration. Set it
+back to `false` when the Mage cluster resumes.
+
+```yaml
+cleanupJob:
+  enabled: true
+  suspend: true
+```
+
 ## Validate dependencies before Mage starts
 
-Dependency validation is disabled by default. When enabled, the chart runs
-Mage's dependency setup in an init container and starts the main container only
-after project requirements install and the server and scheduler startup modules
-import successfully.
+Dependency validation is enabled by default. The chart runs Mage's dependency
+setup in an init container and starts the main container only after project
+requirements install and the server and scheduler startup modules import
+successfully. Set `dependencyValidation.enabled` to `false` to opt out. Releases
+upgraded with `--reuse-values` from a version without `dependencyValidation`
+remain disabled until the value is explicitly enabled.
 
 ```yaml
 dependencyValidation:
