@@ -1,0 +1,233 @@
+suite: dependency validation init container rendering
+templates:
+  - templates/deployment.yaml
+  - templates/scheduler.yaml
+  - templates/webservice.yaml
+tests:
+  - it: does not render dependency validation by default
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: supports reused values that do not contain the dependency validation map
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+
+  - it: renders validation with the Mage startup environment and project mounts
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      image.repository: example/mageai
+      image.tag: test
+      image.pullPolicy: IfNotPresent
+      config:
+        USER_CODE_PATH: project
+      secrets:
+        TEST_SECRET: secret
+      extraEnvs:
+        - name: EXTRA_SETTING
+          value: enabled
+      extraVolumeMounts:
+        - name: mage-fs
+          mountPath: /home/src
+          subPath: project
+      extraVolumes:
+        - name: mage-fs
+          persistentVolumeClaim:
+            claimName: mage-project
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: validate-dependencies
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: example/mageai:test
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: IfNotPresent
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: /app/run_app.sh
+      - equal:
+          path: spec.template.spec.initContainers[0].command[3]
+          value: |
+            PROJECT_PATH="${USER_CODE_PATH:-default_repo}"
+            REQUIREMENTS_FILE="${PROJECT_PATH}/requirements.txt"
+            if [ -f "${REQUIREMENTS_FILE}" ]; then
+              python -m pip install -r "${REQUIREMENTS_FILE}"
+            fi
+            python -c "import mage_ai.server.server"
+            python -c "import mage_ai.server.scheduler_manager; import mage_ai.orchestration.job_manager; import mage_ai.orchestration.triggers.loop_time_trigger"
+      - equal:
+          path: spec.template.spec.initContainers[0].envFrom[0].configMapRef.name
+          value: mageai-env
+      - equal:
+          path: spec.template.spec.initContainers[0].envFrom[1].secretRef.name
+          value: mageai-secret-env
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].name
+          value: EXTRA_SETTING
+      - equal:
+          path: spec.template.spec.initContainers[0].env[1].name
+          value: MAGE_DATA_DIR
+      - equal:
+          path: spec.template.spec.initContainers[0].env[1].value
+          value: /tmp/mage-validation-data
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].mountPath
+          value: /home/src
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].subPath
+          value: project
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[1].name
+          value: dependency-validation-data
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[1].mountPath
+          value: /tmp/mage-validation-data
+      - isNotNull:
+          path: spec.template.spec.volumes[1].emptyDir
+
+  - it: renders after the existing dependency readiness containers
+    template: templates/deployment.yaml
+    set:
+      dependencyValidation.enabled: true
+      postgresql.enabled: true
+      redis.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-redis
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: wait-for-postgres
+      - equal:
+          path: spec.template.spec.initContainers[2].name
+          value: validate-dependencies
+
+  - it: renders for the standalone web server with its instance type
+    template: templates/webservice.yaml
+    set:
+      standaloneScheduler: true
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: validate-dependencies
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: INSTANCE_TYPE
+            value: web_server
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MAGE_DATA_DIR
+            value: /tmp/mage-validation-data
+
+  - it: renders for the standalone scheduler with its instance type
+    template: templates/scheduler.yaml
+    set:
+      standaloneScheduler: true
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: validate-dependencies
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: INSTANCE_TYPE
+            value: scheduler
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MAGE_DATA_DIR
+            value: /tmp/mage-validation-data
+
+  - it: uses the same digest image for validation and the application
+    template: templates/scheduler.yaml
+    set:
+      standaloneScheduler: true
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      image.repository: example/mageai
+      image.digest: sha256:abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: example/mageai@sha256:abcdef
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/mageai@sha256:abcdef
+
+  - it: permits a custom validation command
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      dependencyValidation.command:
+        - /app/run_app.sh
+        - python
+        - -c
+        - import mage_ai
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[3]
+          value: import mage_ai
+
+  - it: overrides a shared dependency data directory for validation
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      extraEnvs:
+        - name: MAGE_DATA_DIR
+          value: /home/src/mage_data
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].name
+          value: MAGE_DATA_DIR
+      - equal:
+          path: spec.template.spec.initContainers[0].env[0].value
+          value: /tmp/mage-validation-data
+      - lengthEqual:
+          path: spec.template.spec.initContainers[0].env
+          count: 1
+
+  - it: falls back to the safe default when an upgraded release has no command
+    template: templates/deployment.yaml
+    set:
+      postgresql.enabled: false
+      redis.enabled: false
+      dependencyValidation.enabled: true
+      dependencyValidation.command: []
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command[0]
+          value: /app/run_app.sh
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[3]
+          pattern: 'python -m pip install -r'
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[3]
+          pattern: 'mage_ai.server.scheduler_manager'

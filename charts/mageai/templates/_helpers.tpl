@@ -79,6 +79,115 @@ Generate chart secret name
 {{- end -}}
 
 {{/*
+Render the Mage image reference shared by application and validation containers.
+*/}}
+{{- define "mageai.image" -}}
+{{- if .Values.image.digest -}}
+{{ .Values.image.repository }}@{{ .Values.image.digest }}
+{{- else -}}
+{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return "true" when dependency validation is enabled. Older releases upgraded
+with --reuse-values may not have the dependencyValidation map at all.
+*/}}
+{{- define "mageai.dependencyValidationEnabled" -}}
+{{- if and .Values.dependencyValidation .Values.dependencyValidation.enabled }}true{{ end -}}
+{{- end -}}
+
+{{/*
+Render the optional dependency validation init container. The caller may pass
+an instanceType so split web server and scheduler deployments validate with the
+same workload-specific environment as their main containers.
+*/}}
+{{- define "mageai.dependencyValidationInitContainer" -}}
+{{- $root := .root -}}
+{{- $instanceType := default "" .instanceType -}}
+{{- $defaultCommand := list "/app/run_app.sh" "/bin/bash" "-ec" (printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" "PROJECT_PATH=\"${USER_CODE_PATH:-default_repo}\"" "REQUIREMENTS_FILE=\"${PROJECT_PATH}/requirements.txt\"" "if [ -f \"${REQUIREMENTS_FILE}\" ]; then" "  python -m pip install -r \"${REQUIREMENTS_FILE}\"" "fi" "python -c \"import mage_ai.server.server\"" "python -c \"import mage_ai.server.scheduler_manager; import mage_ai.orchestration.job_manager; import mage_ai.orchestration.triggers.loop_time_trigger\"") -}}
+{{- $command := default $defaultCommand $root.Values.dependencyValidation.command -}}
+- name: validate-dependencies
+  securityContext:
+    {{- toYaml $root.Values.securityContext | nindent 4 }}
+  image: {{ include "mageai.image" $root | quote }}
+  imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+  command:
+    {{- toYaml $command | nindent 4 }}
+  resources:
+    {{- toYaml $root.Values.dependencyValidation.resources | nindent 4 }}
+  {{- if or $root.Values.config $root.Values.existingSecret $root.Values.secrets }}
+  envFrom:
+    {{- if $root.Values.config }}
+    - configMapRef:
+        name: {{ include "mageai.fullname" $root }}-env
+    {{- end }}
+    {{- if or $root.Values.existingSecret $root.Values.secrets }}
+    - secretRef:
+        name: {{ include "mageai.secretName" $root }}
+    {{- end }}
+  {{- end }}
+  env:
+  {{- if $root.Values.env }}
+    {{- range $root.Values.env }}
+      {{- if ne .name "MAGE_DATA_DIR" }}
+        {{- toYaml (list .) | nindent 4 }}
+      {{- end }}
+    {{- end }}
+  {{- else if $root.Values.extraEnvs }}
+    {{- range $root.Values.extraEnvs }}
+      {{- if ne .name "MAGE_DATA_DIR" }}
+        {{- toYaml (list .) | nindent 4 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+    # Keep preflight dependency writes in the init container's ephemeral layer.
+    # This entry intentionally follows user-provided environment variables so
+    # validation cannot reuse or mutate the running deployment's cached venv.
+    - name: MAGE_DATA_DIR
+      value: /tmp/mage-validation-data
+  {{- if $root.Values.redis.enabled }}
+    - name: REDIS_URL
+      value: redis://{{ $root.Release.Name }}-redis-headless:6379/0
+  {{- else if $root.Values.redis.customRedisURL }}
+    - name: REDIS_URL
+      value: {{ $root.Values.redis.customRedisURL }}
+  {{- end }}
+  {{- if $root.Values.postgresql.enabled }}
+    - name: MAGE_DATABASE_CONNECTION_URL
+      value: postgresql://{{ $root.Values.postgresql.auth.username }}:{{ $root.Values.postgresql.auth.password }}@{{ $root.Values.postgresql.fullnameOverride }}:5432/{{ $root.Values.postgresql.auth.database }}
+  {{- end }}
+  {{- if $instanceType }}
+    - name: INSTANCE_TYPE
+      value: {{ $instanceType }}
+  {{- end }}
+  {{- if and $root.Values.workspaceConfig $root.Values.workspaceConfig.enabled }}
+    - name: WORKSPACE_DEFAULT_CONFIG_PATH
+      value: /etc/mage/workspace-config.yaml
+  {{- end }}
+  {{- if and $root.Values.k8sExecutorConfig $root.Values.k8sExecutorConfig.enabled }}
+    - name: K8S_DEFAULT_CONFIG_PATH
+      value: /etc/mage/k8s-executor-config.yaml
+  {{- end }}
+  volumeMounts:
+    {{- include "mageai.projectVolumeMounts" $root | nindent 4 }}
+    - name: dependency-validation-data
+      mountPath: /tmp/mage-validation-data
+  {{- if and $root.Values.workspaceConfig $root.Values.workspaceConfig.enabled }}
+    - name: workspace-config
+      mountPath: /etc/mage/workspace-config.yaml
+      subPath: config.yaml
+      readOnly: true
+  {{- end }}
+  {{- if and $root.Values.k8sExecutorConfig $root.Values.k8sExecutorConfig.enabled }}
+    - name: k8s-executor-config
+      mountPath: /etc/mage/k8s-executor-config.yaml
+      subPath: config.yaml
+      readOnly: true
+  {{- end }}
+{{- end -}}
+
+{{/*
 Resolve the OpenSearch host.
 When opensearch.enabled=true and logSearch.opensearch.host is not explicitly set,
 derive the in-cluster service name from the bundled sub-chart.
