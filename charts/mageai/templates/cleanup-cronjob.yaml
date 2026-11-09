@@ -37,7 +37,7 @@ spec:
                 {{- toYaml .Values.extraVolumeMounts | nindent 16 }}
               {{- end }}
           restartPolicy: OnFailure
-          {{- with .Values.cleanupJob.nodeSelector }}
+          {{- with (default .Values.nodeSelector .Values.cleanupJob.nodeSelector) }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}
           {{- end }}

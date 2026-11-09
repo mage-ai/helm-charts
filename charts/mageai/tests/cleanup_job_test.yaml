@@ -7,7 +7,7 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: omits a node selector when none is configured
+  - it: omits a node selector when neither selector is configured
     set:
       cleanupJob.enabled: true
     asserts:
@@ -27,4 +27,28 @@ tests:
           path: spec.jobTemplate.spec.template.spec.nodeSelector
           value:
             kubernetes.io/os: linux
+            workload: maintenance
+
+  - it: inherits the application node selector by default
+    set:
+      cleanupJob.enabled: true
+      nodeSelector:
+        workload: application
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+          value:
+            workload: application
+
+  - it: prefers the cleanup job node selector over the application selector
+    set:
+      cleanupJob.enabled: true
+      nodeSelector:
+        workload: application
+      cleanupJob.nodeSelector:
+        workload: maintenance
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+          value:
             workload: maintenance
