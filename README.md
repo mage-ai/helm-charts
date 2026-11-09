@@ -178,6 +178,22 @@ service:
 The repository also includes the `mageai-ingress` chart for managing ingress
 separately.
 
+### Schedule the cleanup job on labeled nodes
+
+The optional cleanup CronJob can target nodes independently from the Mage
+application pods:
+
+```yaml
+cleanupJob:
+  enabled: true
+  schedule_cron: "0 * * * *"
+  nodeSelector:
+    workload: maintenance
+```
+
+`cleanupJob.nodeSelector` applies only to the cleanup CronJob. Use the top-level
+`nodeSelector` value to schedule the Mage application pods.
+
 ## Validate dependencies before Mage starts
 
 Dependency validation is disabled by default. When enabled, the chart runs

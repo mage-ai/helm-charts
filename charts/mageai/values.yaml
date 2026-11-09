@@ -351,6 +351,8 @@ cleanupJob:
   clean_variable_cli_args: ""
   clean_log_cli_args: ""
   schedule_cron: "0 * * * *"  # Runs every hour
+  # Schedule the cleanup job only on nodes with these labels
+  nodeSelector: {}
 
 # ------------------------------------------------------------------------------
 # Mage Pro features (workspaces and Kubernetes executor)

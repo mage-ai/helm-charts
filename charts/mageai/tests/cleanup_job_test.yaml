@@ -1,0 +1,30 @@
+suite: cleanup job rendering
+templates:
+  - templates/cleanup-cronjob.yaml
+tests:
+  - it: does not render the cleanup job by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: omits a node selector when none is configured
+    set:
+      cleanupJob.enabled: true
+    asserts:
+      - isKind:
+          of: CronJob
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+
+  - it: renders the configured node selector
+    set:
+      cleanupJob.enabled: true
+      cleanupJob.nodeSelector:
+        kubernetes.io/os: linux
+        workload: maintenance
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+          value:
+            kubernetes.io/os: linux
+            workload: maintenance
