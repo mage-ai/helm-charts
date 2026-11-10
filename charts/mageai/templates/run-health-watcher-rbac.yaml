@@ -1,0 +1,48 @@
+{{- if .Values.runHealthWatcher.enabled }}
+{{- if .Values.runHealthWatcher.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "mageai.runHealthWatcherServiceAccountName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: run-health-watcher
+  {{- with .Values.runHealthWatcher.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mageai.runHealthWatcherName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: run-health-watcher
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "jobs/status"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mageai.runHealthWatcherName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: run-health-watcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mageai.runHealthWatcherServiceAccountName" . }}
+roleRef:
+  kind: Role
+  name: {{ include "mageai.runHealthWatcherName" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

@@ -1,0 +1,166 @@
+suite: run health watcher rendering
+templates:
+  - templates/run-health-watcher-deployment.yaml
+  - templates/run-health-watcher-rbac.yaml
+tests:
+  - it: does not render watcher resources when disabled
+    set:
+      runHealthWatcher.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders a dedicated watcher deployment with shared config and project access
+    template: templates/run-health-watcher-deployment.yaml
+    set:
+      fullnameOverride: mageai
+      config:
+        MAGE_ENV: staging
+      secrets:
+        DB_PASSWORD: secret
+      postgresql.enabled: true
+      redis.customRedisURL: redis://redis:6379/0
+      workspaceConfig.enabled: true
+      k8sExecutorConfig.enabled: true
+      image.repository: 123456789012.dkr.ecr.us-west-2.amazonaws.com/mage-pro
+      image.tag: pr-3803
+      runHealthWatcher.enabled: true
+      runHealthWatcher.extraEnv:
+        - name: MAGE_RUN_HEALTH_WATCHER_CADENCE_SECONDS
+          value: "30"
+      runHealthWatcher.extraVolumeMounts:
+        - name: extra-certs
+          mountPath: /etc/certs
+          readOnly: true
+      runHealthWatcher.extraVolumes:
+        - name: extra-certs
+          secret:
+            secretName: extra-certs
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: run-health-watcher
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: run-health-watcher
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: 123456789012.dkr.ecr.us-west-2.amazonaws.com/mage-pro:pr-3803
+      - equal:
+          path: spec.template.spec.containers[0].command[1]
+          value: -lc
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: cd /home/src && python -m mage_ai.orchestration.run_health.watcher
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].configMapRef.name
+          value: mageai-env
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[1].secretRef.name
+          value: mageai-secret-env
+      - equal:
+          path: spec.template.spec.containers[0].env[1].name
+          value: REDIS_URL
+      - equal:
+          path: spec.template.spec.containers[0].env[2].name
+          value: MAGE_DATABASE_CONNECTION_URL
+      - equal:
+          path: spec.template.spec.containers[0].env[3].name
+          value: WORKSPACE_DEFAULT_CONFIG_PATH
+      - equal:
+          path: spec.template.spec.containers[0].env[4].name
+          value: K8S_DEFAULT_CONFIG_PATH
+      - equal:
+          path: spec.template.spec.containers[0].env[5].name
+          value: MAGE_RUN_HEALTH_WATCHER_ENABLED
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: mage-fs
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[1].name
+          value: workspace-config
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[2].name
+          value: k8s-executor-config
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[3].name
+          value: extra-certs
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: mage-fs
+      - equal:
+          path: spec.template.spec.volumes[1].name
+          value: workspace-config
+      - equal:
+          path: spec.template.spec.volumes[2].name
+          value: k8s-executor-config
+      - equal:
+          path: spec.template.spec.volumes[3].name
+          value: extra-certs
+
+  - it: renders log-search project PVC volume when log search owns project access
+    template: templates/run-health-watcher-deployment.yaml
+    set:
+      fullnameOverride: mageai
+      logSearch.enabled: true
+      logSearch.persistence.existingClaim: pvc-mageai-staging
+      logSearch.persistence.subPath: mage_pro/mageai-staging-test
+      runHealthWatcher.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /home/src
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].subPath
+          value: mage_pro/mageai-staging-test
+      - equal:
+          path: spec.template.spec.volumes[0].name
+          value: log-search-pvc
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: pvc-mageai-staging
+
+  - it: renders namespace-scoped watcher RBAC
+    template: templates/run-health-watcher-rbac.yaml
+    set:
+      fullnameOverride: mageai
+      runHealthWatcher.enabled: true
+    asserts:
+      - isKind:
+          of: ServiceAccount
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: run-health-watcher
+        documentIndex: 0
+      - isKind:
+          of: Role
+        documentIndex: 1
+      - equal:
+          path: rules[0].resources[0]
+          value: pods
+        documentIndex: 1
+      - equal:
+          path: rules[0].verbs[3]
+          value: delete
+        documentIndex: 1
+      - equal:
+          path: rules[1].resources[0]
+          value: events
+        documentIndex: 1
+      - equal:
+          path: rules[2].resources[0]
+          value: jobs
+        documentIndex: 1
+      - isKind:
+          of: RoleBinding
+        documentIndex: 2
+      - equal:
+          path: subjects[0].name
+          value: run-health-watcher
+        documentIndex: 2

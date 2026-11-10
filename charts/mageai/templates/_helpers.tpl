@@ -72,6 +72,39 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Create the run-health watcher deployment name.
+*/}}
+{{- define "mageai.runHealthWatcherName" -}}
+{{- default "run-health-watcher" .Values.runHealthWatcher.name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create the name of the service account for the run-health watcher.
+*/}}
+{{- define "mageai.runHealthWatcherServiceAccountName" -}}
+{{- if .Values.runHealthWatcher.serviceAccount.create }}
+{{- default (include "mageai.runHealthWatcherName" .) .Values.runHealthWatcher.serviceAccount.name }}
+{{- else }}
+{{- default (include "mageai.serviceAccountName" .) .Values.runHealthWatcher.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Resolve the run-health watcher image. Empty watcher image fields inherit the
+main Mage image fields.
+*/}}
+{{- define "mageai.runHealthWatcherImage" -}}
+{{- $repository := default .Values.image.repository .Values.runHealthWatcher.image.repository -}}
+{{- $tag := default (default .Chart.AppVersion .Values.image.tag) .Values.runHealthWatcher.image.tag -}}
+{{- $digest := default .Values.image.digest .Values.runHealthWatcher.image.digest -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $repository $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Generate chart secret name
 */}}
 {{- define "mageai.secretName" -}}

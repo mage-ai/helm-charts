@@ -1,0 +1,158 @@
+{{- if .Values.runHealthWatcher.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mageai.runHealthWatcherName" . }}
+  labels:
+    {{- include "mageai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: run-health-watcher
+spec:
+  replicas: {{ .Values.runHealthWatcher.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mageai.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: run-health-watcher
+  template:
+    metadata:
+      {{- with .Values.runHealthWatcher.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mageai.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: run-health-watcher
+        {{- with .Values.runHealthWatcher.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mageai.runHealthWatcherServiceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.runHealthWatcher.podSecurityContext | nindent 8 }}
+      {{- if or .Values.redis.enabled .Values.redis.customRedisURL .Values.postgresql.enabled }}
+      initContainers:
+        {{- if or .Values.redis.enabled .Values.redis.customRedisURL }}
+        - name: wait-for-redis
+          image: {{ .Values.initContainerImages.alpine }}
+          env:
+          {{- if .Values.redis.enabled }}
+            - name: REDIS_URL
+              value: redis://{{ .Release.Name }}-redis-headless:6379/0
+          {{- else if .Values.redis.customRedisURL }}
+            - name: REDIS_URL
+              value: {{ .Values.redis.customRedisURL }}
+          {{- end }}
+          command: ["sh", "-c", "until nc -z -v $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f1) $(echo $REDIS_URL | cut -d'/' -f3 | cut -d':' -f2); do sleep 1; done"]
+        {{- end }}
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-postgres
+          image: {{ .Values.initContainerImages.busybox }}
+          command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.fullnameOverride }} 5432; do echo waiting for postgres; sleep 2; done;']
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: run-health-watcher
+          securityContext:
+            {{- toYaml .Values.runHealthWatcher.securityContext | nindent 12 }}
+          image: "{{ include "mageai.runHealthWatcherImage" . }}"
+          imagePullPolicy: {{ default .Values.image.pullPolicy .Values.runHealthWatcher.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.runHealthWatcher.command | nindent 12 }}
+          args:
+            {{- toYaml .Values.runHealthWatcher.args | nindent 12 }}
+          resources:
+            {{- toYaml .Values.runHealthWatcher.resources | nindent 12 }}
+          {{- if or .Values.config .Values.existingSecret .Values.secrets .Values.runHealthWatcher.extraEnvFrom }}
+          envFrom:
+            {{- if .Values.config }}
+            - configMapRef:
+                name: {{ include "mageai.fullname" . }}-env
+            {{- end }}
+            {{- if or (.Values.existingSecret) (.Values.secrets) }}
+            - secretRef:
+                name: {{ include "mageai.secretName" . }}
+            {{- end }}
+            {{- with .Values.runHealthWatcher.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          env:
+          {{- if .Values.env }}
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- else if .Values.extraEnvs }}
+            {{- toYaml .Values.extraEnvs | nindent 12 }}
+          {{- end }}
+          {{- if .Values.redis.enabled }}
+            - name: REDIS_URL
+              value: redis://{{ .Release.Name }}-redis-headless:6379/0
+          {{- else if .Values.redis.customRedisURL }}
+            - name: REDIS_URL
+              value: {{ .Values.redis.customRedisURL }}
+          {{- end }}
+          {{- if .Values.postgresql.enabled }}
+            - name: MAGE_DATABASE_CONNECTION_URL
+              value: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ .Values.postgresql.fullnameOverride }}:5432/{{ .Values.postgresql.auth.database }}
+          {{- end }}
+          {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+            - name: WORKSPACE_DEFAULT_CONFIG_PATH
+              value: /etc/mage/workspace-config.yaml
+          {{- end }}
+          {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+            - name: K8S_DEFAULT_CONFIG_PATH
+              value: /etc/mage/k8s-executor-config.yaml
+          {{- end }}
+          {{- if .Values.runHealthWatcher.env }}
+            {{- toYaml .Values.runHealthWatcher.env | nindent 12 }}
+          {{- end }}
+          {{- with .Values.runHealthWatcher.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- include "mageai.projectVolumeMounts" . | nindent 12 }}
+          {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+            - name: workspace-config
+              mountPath: /etc/mage/workspace-config.yaml
+              subPath: config.yaml
+              readOnly: true
+          {{- end }}
+          {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+            - name: k8s-executor-config
+              mountPath: /etc/mage/k8s-executor-config.yaml
+              subPath: config.yaml
+              readOnly: true
+          {{- end }}
+          {{- with .Values.runHealthWatcher.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.runHealthWatcher.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runHealthWatcher.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runHealthWatcher.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- include "mageai.projectVolumes" . | nindent 8 }}
+      {{- if and .Values.workspaceConfig .Values.workspaceConfig.enabled }}
+        - name: workspace-config
+          configMap:
+            name: {{ include "mageai.fullname" . }}-workspace-config
+      {{- end }}
+      {{- if and .Values.k8sExecutorConfig .Values.k8sExecutorConfig.enabled }}
+        - name: k8s-executor-config
+          configMap:
+            name: {{ include "mageai.fullname" . }}-k8s-executor-config
+      {{- end }}
+      {{- with .Values.runHealthWatcher.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        {{- include "mageai.logSearch.volumes" (dict "root" . "includeFluentBit" false) | nindent 8 }}
+{{- end }}
