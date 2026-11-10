@@ -180,8 +180,9 @@ separately.
 
 ### Schedule the cleanup job on labeled nodes
 
-The optional cleanup CronJob can target nodes independently from the Mage
-application pods:
+The optional cleanup CronJob uses the top-level `nodeSelector` configured for
+the Mage application pods by default. Set `cleanupJob.nodeSelector` to target
+different nodes:
 
 ```yaml
 cleanupJob:
@@ -191,8 +192,8 @@ cleanupJob:
     workload: maintenance
 ```
 
-`cleanupJob.nodeSelector` applies only to the cleanup CronJob. Use the top-level
-`nodeSelector` value to schedule the Mage application pods.
+When non-empty, `cleanupJob.nodeSelector` applies only to the cleanup CronJob
+and takes precedence over the top-level `nodeSelector`.
 
 ## Validate dependencies before Mage starts
 
