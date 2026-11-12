@@ -20,6 +20,10 @@ See [log-search-deployment.md](log-search-deployment.md) for step-by-step
 instructions to add OpenSearch-backed log search to an existing EKS deployment.
 This is not a general Mage deployment guide — it covers only the log search feature.
 
+See [log-search-workspace-deployment.md](log-search-workspace-deployment.md) for
+workspace log-search deployment on a staging cluster where pipeline-level
+OpenSearch log search is already installed and running.
+
 ## Log file path
 
 Mage writes logs to `$MAGE_DATA_DIR/{repo_name}/pipelines/{pipeline}/.logs/...`.
