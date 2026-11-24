@@ -437,3 +437,16 @@ Base path
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/* Supply the chart replica count unless a singleton already gets its topology from env or envFrom. */}}
+{{- define "mageai.generatedEditorReplicas" -}}
+{{- $values := .values -}}
+{{- $key := "MAGE_SERVER_REPLICAS" -}}
+{{- $declared := or $values.existingSecret
+      (hasKey ($values.config | default dict) $key)
+      (hasKey ($values.secrets | default dict) $key) -}}
+{{- range ($values.env | default $values.extraEnvs) -}}
+  {{- if eq .name $key }}{{ $declared = true }}{{ end -}}
+{{- end -}}
+{{- if or (ne (int .replicas) 1) (not $declared) }}{{ .replicas }}{{ end -}}
+{{- end -}}

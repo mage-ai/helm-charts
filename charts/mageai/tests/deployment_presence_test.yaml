@@ -17,6 +17,15 @@ tests:
             name: MAGE_SERVER_REPLICAS
             value: "1"
 
+  - it: leaves an inherited replica count visible to a singleton editor
+    template: templates/deployment.yaml
+    set:
+      config.MAGE_SERVER_REPLICAS: "3"
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: MAGE_SERVER_REPLICAS, value: "1"}
+
   - it: exposes multiple combined editor replicas without Redis
     template: templates/deployment.yaml
     set:
@@ -38,6 +47,8 @@ tests:
       scheduler.replicaCount: 4
       webServer.replicaCount: 1
       extraEnvs:
+        - name: MAGE_SERVER_REPLICAS
+          value: "5"
         - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
           value: "true"
     asserts:
@@ -51,7 +62,10 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: MAGE_SERVER_REPLICAS
-            value: "1"
+            value: "5"
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: MAGE_SERVER_REPLICAS, value: "1"}
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -103,8 +117,18 @@ tests:
   - it: preserves rolling upgrades with external Redis
     template: templates/deployment.yaml
     set:
+      env:
+        - name: MAGE_SERVER_REPLICAS
+          valueFrom:
+            configMapKeyRef: {name: topology, key: editors}
       redis.customRedisURL: redis://shared-redis:6379/0
     asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.configMapKeyRef
+          value: {name: topology, key: editors}
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: MAGE_SERVER_REPLICAS, value: "1"}
       - isNull:
           path: spec.strategy
       - contains:
@@ -131,8 +155,12 @@ tests:
     template: templates/webservice.yaml
     set:
       standaloneScheduler: true
+      existingSecret: deployment-environment
       redis.customRedisURL: redis://shared-redis:6379/0
     asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: MAGE_SERVER_REPLICAS, value: "1"}
       - isNull:
           path: spec.strategy
       - contains:

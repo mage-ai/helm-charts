@@ -1,6 +1,7 @@
 {{- if .Values.standaloneScheduler }}
 {{- $hpa := .Values.webServer.hpa | default dict }}
 {{- $serverReplicas := max .Values.webServer.replicaCount ($hpa.maxReplicas | default .Values.webServer.replicaCount) }}
+{{- $generatedReplicas := include "mageai.generatedEditorReplicas" (dict "values" .Values "replicas" $serverReplicas) }}
 {{- $redisConfigured := or .Values.redis.enabled .Values.redis.customRedisURL }}
 apiVersion: apps/v1
 kind: Deployment
@@ -115,7 +116,7 @@ spec:
             {{- end }}
           env:
           {{- range (.Values.env | default .Values.extraEnvs) }}
-          {{- if and (ne .name "MAGE_SERVER_REPLICAS") (or (not $redisConfigured) (ne .name "MAGE_PRESENCE_REQUIRE_SHARED_REDIS")) }}
+          {{- if and (or (not $generatedReplicas) (ne .name "MAGE_SERVER_REPLICAS")) (or (not $redisConfigured) (ne .name "MAGE_PRESENCE_REQUIRE_SHARED_REDIS")) }}
             {{- toYaml (list .) | nindent 12 }}
           {{- end }}
           {{- end }}
@@ -164,8 +165,10 @@ spec:
                   key: OPENSEARCH_PASSWORD
             {{- end }}
           {{- end }}
+          {{- with $generatedReplicas }}
             - name: MAGE_SERVER_REPLICAS
-              value: {{ $serverReplicas | quote }}
+              value: {{ . | quote }}
+          {{- end }}
           {{- if $redisConfigured }}
             - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
               value: "true"
