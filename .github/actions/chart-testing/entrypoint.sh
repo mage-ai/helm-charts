@@ -6,6 +6,9 @@ helm repo add opensearch https://opensearch-project.github.io/helm-charts
 helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.4.1
 for chart in charts/*; do
   if [ -d "$chart/tests" ]; then
+    if [ -f "$chart/Chart.lock" ]; then
+      helm dependency build --skip-refresh "$chart"
+    fi
     helm unittest "$chart"
   fi
 done
