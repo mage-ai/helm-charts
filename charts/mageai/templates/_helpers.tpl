@@ -437,3 +437,36 @@ Base path
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/* Supply the chart replica count unless a singleton already gets its topology from env or envFrom. */}}
+{{- define "mageai.generatedEditorReplicas" -}}
+{{- $values := .values -}}
+{{- $key := "MAGE_SERVER_REPLICAS" -}}
+{{- $declared := or $values.existingSecret
+      (hasKey ($values.config | default dict) $key)
+      (hasKey ($values.secrets | default dict) $key) -}}
+{{- range ($values.env | default $values.extraEnvs) -}}
+  {{- if eq .name $key }}{{ $declared = true }}{{ end -}}
+{{- end -}}
+{{- if or (ne (int .replicas) 1) (not $declared) }}{{ .replicas }}{{ end -}}
+{{- end -}}
+
+{{- define "mageai.editorExtraEnvs" -}}
+{{- $root := .root -}}
+{{- $bundledAuth := and $root.Values.redis.enabled $root.Values.redis.auth.enabled -}}
+{{- range ($root.Values.env | default $root.Values.extraEnvs) }}
+{{- if not (or (and $.replicas (eq .name "MAGE_SERVER_REPLICAS"))
+               (and $.redisConfigured (eq .name "MAGE_PRESENCE_REQUIRE_SHARED_REDIS"))
+               (and $bundledAuth (eq .name "MAGE_PRESENCE_REDIS_PASSWORD"))) }}
+{{ toYaml (list .) }}
+{{- end }}
+{{- end }}
+{{- if $bundledAuth }}
+{{- $redis := merge (dict "Template" $root.Template) $root.Subcharts.redis }}
+- name: MAGE_PRESENCE_REDIS_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "redis.secretName" $redis | quote }}
+      key: {{ include "redis.secretPasswordKey" $redis | quote }}
+{{- end -}}
+{{- end -}}
