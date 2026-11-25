@@ -115,11 +115,7 @@ spec:
                 name: {{ include "mageai.secretName" . }}
             {{- end }}
           env:
-          {{- range (.Values.env | default .Values.extraEnvs) }}
-          {{- if and (or (not $generatedReplicas) (ne .name "MAGE_SERVER_REPLICAS")) (or (not $redisConfigured) (ne .name "MAGE_PRESENCE_REQUIRE_SHARED_REDIS")) }}
-            {{- toYaml (list .) | nindent 12 }}
-          {{- end }}
-          {{- end }}
+            {{- include "mageai.editorExtraEnvs" (dict "root" . "replicas" $generatedReplicas "redisConfigured" $redisConfigured) | nindent 12 }}
           {{- if .Values.redis.enabled }}
             - name: REDIS_URL
               value: redis://{{.Release.Name}}-redis-headless:6379/0

@@ -88,11 +88,16 @@ tests:
 
   - it: preserves rolling upgrades with bundled Redis
     template: templates/deployment.yaml
+    release:
+      name: qa
     set:
       redis.enabled: true
+      redis.auth.enabled: true
       extraEnvs:
         - name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
           value: "false"
+        - name: MAGE_PRESENCE_REDIS_PASSWORD
+          value: ignored
     asserts:
       - isNull:
           path: spec.strategy
@@ -111,8 +116,14 @@ tests:
           content:
             name: MAGE_PRESENCE_REQUIRE_SHARED_REDIS
             value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef: {name: qa-redis, key: redis-password}
       - isNull:
-          path: spec.template.spec.containers[0].env[3]
+          path: spec.template.spec.containers[0].env[4]
 
   - it: preserves rolling upgrades with external Redis
     template: templates/deployment.yaml
@@ -142,7 +153,22 @@ tests:
     set:
       standaloneScheduler: true
       redis.enabled: true
+      redis.auth.enabled: true
+      redis.auth.existingSecret: shared-redis
+      redis.auth.existingSecretPasswordKey: editor-password
+      env:
+        - name: MAGE_PRESENCE_REDIS_PASSWORD
+          value: ignored
     asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content: {name: MAGE_PRESENCE_REDIS_PASSWORD, value: ignored}
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAGE_PRESENCE_REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef: {name: shared-redis, key: editor-password}
       - isNull:
           path: spec.strategy
       - contains:
